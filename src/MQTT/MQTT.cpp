@@ -85,7 +85,7 @@ void MqttManager::Callback(char* topic, byte* payload, unsigned int length)
         message += (char)payload[i];
     }
 
-    Serial.println(topic);
+    _router.Route(topic,payload);
     Serial.println(message);
 
     // Next lesson:
