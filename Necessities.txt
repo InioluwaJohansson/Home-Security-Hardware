@@ -1,0 +1,125 @@
+For **one room controller**, based on everything we've discussed, here's a complete hardware list.
+
+# Main Controller
+
+* 1 × ESP32-S3-WROOM-1 (recommended) *(or ESP32-WROOM-32 if you already have it)*
+
+# Motor Control
+
+* 4 × TB6612FNG Dual H-Bridge Modules *(controls 8 DC motors total: 4 doors + 4 windows)*
+
+# Door & Window Motors
+
+* 4 × DC geared motors (Doors)
+* 4 × DC geared motors (Windows)
+
+# Position Detection
+
+* 16 × Hall Effect Sensors *(2 per door/window: Open & Closed)*
+* 16 × Neodymium Magnets
+
+# Lighting
+
+* 6 × Relay Channels *(or MOSFET channels if dimming is required)*
+
+# Appliances
+
+* 8 × Relay Channels
+
+# Cameras
+
+* 3 × Relay/MOSFET Channels *(for camera power or reset control)*
+
+# Intrusion Detection
+
+* Up to 5 × Panasonic EKMC1601111 PIR Motion Sensors
+
+# Authentication
+
+* 1 × Fingerprint Sensor (e.g., R503 or AS608)
+* 1 × RFID Reader (e.g., MFRC522)
+
+# Status Indicators
+
+* 5 × LEDs
+* 5 × 220Ω Resistors
+
+Suggested LED functions:
+
+* Power
+* Wi-Fi
+* MQTT
+* Armed/Disarmed
+* Alarm/Fault
+
+# GPIO Expansion
+
+* 3 × MCP23017 (16 GPIO I²C Expanders)
+
+Outputs → MCP23017
+Inputs → 74HC4067
+
+# Power
+
+* 1 × 12V DC Power Supply
+* 1 × 5V Buck Converter
+* 1 × 3.3V Regulator *(if needed for your PCB design)*
+
+# Protection
+
+* Fuses
+* Flyback Diodes *(if using bare relay coils)*
+* Reverse Polarity Protection
+* TVS Diodes
+* Decoupling Capacitors
+
+# Connectors
+
+* Screw Terminal Blocks
+* JST Connectors (optional)
+* Pin Headers
+
+# Communication
+
+* Wi-Fi (ESP32 built-in)
+* MQTT (software)
+* HTTP (for initial provisioning if required)
+
+# PCB Components
+
+* PCB
+* Crystal/Oscillator (if designing from the ESP32 module reference)
+* Reset Button
+* Boot Button
+* Programming Header (USB-UART or native USB depending on the ESP32 module)
+
+# Storage
+
+* SPI Flash *(built into ESP32 module)*
+* NVS (for storing Hardware ID, Auth Key, JWT, and configuration)
+
+---
+
+## Maximum Capacity of One Room Controller
+
+| Facility            | Maximum |
+| ------------------- | ------: |
+| Doors               |       4 |
+| Windows             |       4 |
+| Lights              |       6 |
+| Appliances          |       8 |
+| Cameras             |       3 |
+| PIR Motion Sensors  |       5 |
+| Fingerprint Readers |       1 |
+| RFID Readers        |       1 |
+| Status LEDs         |       5 |
+
+This hardware configuration aligns well with the software architecture you've been building: the ESP32 handles networking, authentication, MQTT, and control logic, while the surrounding hardware provides the I/O needed for a fully featured room controller.
+
+
+| Function          | Motor                    |
+| ----------------- | ------------------------ |
+| Door open/close   | 12V Worm Gear DC Motor   |
+| Window open/close | 12V Worm Gear DC Motor   |
+| Door lock         | 12V N20 Metal Gear Motor |
+| Window lock       | 12V N20 Metal Gear Motor |

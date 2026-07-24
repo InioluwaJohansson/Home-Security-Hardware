@@ -5,9 +5,13 @@
 class JwtManager
 {
 public:
+
     void SetToken(const String& token);
-    String GetToken() const;
+
+    const String& GetToken() const;
+
     bool HasToken() const;
+
     void Clear();
 
 private:

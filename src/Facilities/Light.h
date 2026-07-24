@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Devices.h"
+#include "DeviceModels.h"
+#include "../Hardware/IHardwareController.h"
 
 class LightManager
 {
@@ -13,8 +14,11 @@ public:
     void Update(const GenericDeviceUpdateState& update);
 
     LightDeviceState GetCurrentState(int lightId);
-
+    
 private:
-
+    
     LightDeviceState _cache[MAX_LIGHTS];
+
+    IHardwareController& _hardware;
+
 };

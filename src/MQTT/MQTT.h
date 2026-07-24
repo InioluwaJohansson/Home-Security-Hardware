@@ -2,15 +2,19 @@
 
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
+
 #include "../Config/Config.h"
 
 class MqttManager
 {
 public:
 
-    MqttManager(ConfigurationManager& configuration);
+    explicit MqttManager(ConfigurationManager& configuration);
 
     bool Connect();
+
+    bool Reconnect();
 
     void Disconnect();
 
@@ -20,7 +24,7 @@ public:
 
     bool Publish(
         const String& topic,
-        const String& payload,
+        JsonDocument& document,
         bool retained = false);
 
     void SubscribeTopics();
@@ -39,6 +43,4 @@ private:
         char* topic,
         byte* payload,
         unsigned int length);
-
-    bool Reconnect();
 };

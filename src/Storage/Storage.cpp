@@ -15,10 +15,9 @@ bool StorageManager::SaveConfiguration(const DeviceConfiguration& config)
     preferences.putString("wifiPass", config.WifiPassword);
     preferences.putString("mqttHost", config.MqttHost);
     preferences.putUShort("mqttPort", config.MqttPort);
-    preferences.putString("mqttHost", config.MqttUsername);
-    preferences.putUShort("mqttPort", config.MqttPassword);
-    preferences.putString("deviceName", config.DeviceName);
-    preferences.putBool("provisioned", config.IsProvisioned);
+    preferences.putString("mqttUsername", config.MqttUsername);
+    preferences.putUShort("mqttPassword", config.MqttPassword);
+    preferences.putBool("isProvisioned", config.IsProvisioned);
     return true;
 }
 
@@ -31,12 +30,19 @@ DeviceConfiguration StorageManager::LoadConfiguration()
     config.WifiPassword = preferences.getString("wifiPass", "");
     config.MqttHost = preferences.getString("mqttHost", "");
     config.MqttPort = preferences.getUShort("mqttPort", 1883);
-    config.MqttHost = preferences.getString("mqttUsername", "");
-    config.MqttPort = preferences.getUShort("mqttPassword", 1883);
+    config.MqttUsername = preferences.getString("mqttUsername", "");
+    config.MqttPassword = preferences.getUShort("mqttPassword", "");
+    config.IsProvisioned = preferences.getUShort("isProvisioned", false);
     return config;
 }
 
 void StorageManager::Clear()
 {
     preferences.clear();
+}
+bool StorageManager::IsProvisioned()
+{
+    return
+        preferences.getString("hardwareId", "").length() > 0 &&
+        preferences.getString("authKey", "").length() > 0;
 }

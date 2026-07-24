@@ -28,8 +28,7 @@ private:
 
     StorageManager storage;
     JwtManager jwt;
-
-    DeviceConfiguration configuration;
+    Config configuration;
 };
 
 struct Config
@@ -44,4 +43,5 @@ struct Config
     uint16_t MqttPort = 1883;
     String MqttUsername;
     String MqttPassword;
+    bool IsProvisioned;
 };

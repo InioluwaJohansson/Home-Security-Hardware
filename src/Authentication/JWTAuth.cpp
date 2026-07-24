@@ -1,15 +1,21 @@
-#pragma once
+#include "JWTAuth.h"
 
-#include <Arduino.h>
-
-class JwtManager
+void JwtManager::SetToken(const String& token)
 {
-public:
+    _token = token;
+}
 
-    void SetToken(const String& token);
-    const String& GetToken() const;
-    bool IsAuthenticated() const;
-    void Clear();
-private:
-    String token;
-};
+const String& JwtManager::GetToken() const
+{
+    return _token;
+}
+
+bool JwtManager::HasToken() const
+{
+    return !_token.isEmpty();
+}
+
+void JwtManager::Clear()
+{
+    _token.clear();
+}

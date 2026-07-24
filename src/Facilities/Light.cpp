@@ -1,4 +1,10 @@
 #include "Light.h"
+
+LightManager::LightManager(
+    IHardwareController& hardware)
+    : _hardware(hardware)
+{
+}
 void LightManager::Apply(const LightDeviceState& state)
 {
     auto current = GetCurrentState(state.LightId);
@@ -9,25 +15,13 @@ void LightManager::Apply(const LightDeviceState& state)
         return;
     }
 
-    SetRelay(state.LightId, state.IsActive);
+    _hardware.SetLight(
+        state.LightId,
+        state.IsActive);
 
-    SetBrightness(state.LightId, state.BrightnessLevel);
+    _hardware.SetBrightness(
+        state.LightId,
+        state.BrightnessLevel);
 
     _cache[state.LightId] = state;
-}
-void LightManager::Update(const GenericDeviceUpdateState& update)
-{
-    LightDeviceState state;
-
-    state.LightId = update.Id;
-
-    state.IsActive = update.IsActive;
-
-    state.BrightnessLevel = update.BrightnessLevel;
-
-    Apply(state);
-}
-LightDeviceState LightManager::GetCurrentState(int id)
-{
-    return _cache[id];
 }
