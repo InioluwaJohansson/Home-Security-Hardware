@@ -284,3 +284,27 @@ void HardwareController::Alarm(bool active)
         1,      // Pin 1
         active);
 }
+
+void HardwareController::SetBuzzer(bool active)
+{
+    _mcp.DigitalWrite(
+        HardwareOutputs::AlarmChip,
+        HardwareOutputs::BuzzerPin,
+        active);
+}
+
+void HardwareController::SetSiren(bool active)
+{
+    _mcp.DigitalWrite(
+        HardwareOutputs::AlarmChip,
+        HardwareOutputs::SirenPin,
+        active);
+}
+void HardwareController::Beep(uint16_t duration)
+{
+    SetBuzzer(true);
+
+    delay(duration);
+
+    SetBuzzer(false);
+}

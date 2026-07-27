@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>Home Security Controller Setup</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<!-- ========================================= -->
+<!-- Header                                    -->
+<!-- ========================================= -->
+
+<h1>Home Security Controller</h1>
+
+<p>
+Configure your room controller before
+connecting it to your Home Security server.
+</p>
+
+<!-- ========================================= -->
+<!-- Stepper                                   -->
+<!-- ========================================= -->
+
+<div class="stepper">
+
+    <div class="step active">
+
+        <div class="step-circle">1</div>
+
+        <div class="step-title">
+            Welcome
+        </div>
+
+    </div>
+
+    <div class="step">
+
+        <div class="step-circle">2</div>
+
+        <div class="step-title">
+            Device
+        </div>
+
+    </div>
+
+    <div class="step">
+
+        <div class="step-circle">3</div>
+
+        <div class="step-title">
+            WiFi
+        </div>
+
+    </div>
+
+    <div class="step">
+
+        <div class="step-circle">4</div>
+
+        <div class="step-title">
+            Server
+        </div>
+
+    </div>
+
+    <div class="step">
+
+        <div class="step-circle">5</div>
+
+        <div class="step-title">
+            Review
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ========================================= -->
+<!-- Welcome                                   -->
+<!-- ========================================= -->
+
+<section
+    id="welcomePage"
+    class="page active">
+
+<h2>
+Welcome
+</h2>
+
+<p>
+
+This controller has not been configured.
+
+Before continuing make sure you have:
+
+</p>
+
+<ul>
+
+<li>Hardware ID</li>
+
+<li>Authentication Key</li>
+
+<li>WiFi Credentials</li>
+
+<li>Backend URL</li>
+
+</ul>
+
+<div class="buttons">
+
+<button
+    class="full-width"
+    data-next>
+
+Get Started
+
+</button>
+
+</div>
+
+</section>
+
+<!-- ========================================= -->
+<!-- Device Page                               -->
+<!-- ========================================= -->
+
+<section
+    id="devicePage"
+    class="page">
+
+<h2>
+
+Device Information
+
+</h2>
+
+<div class="form-group">
+
+<label>
+
+Hardware ID
+
+</label>
+
+<input
+
+id="hardwareId"
+
+type="text"
+
+placeholder="Hardware ID"
+
+autocomplete="off"
+
+spellcheck="false">
+
+</div>
+
+<div class="form-group">
+
+<label>
+
+Authentication Key
+
+</label>
+
+<input
+
+id="authKey"
+
+type="password"
+
+placeholder="Authentication Key"
+
+autocomplete="off"
+
+spellcheck="false">
+
+</div>
+
+<div class="buttons">
+
+<button
+class="secondary"
+data-back>
+
+Back
+
+</button>
+
+<button
+
+onclick="validateDevice().then(r=>{
+
+if(r)nextPage();
+
+})">
+
+Next
+
+</button>
+
+</div>
+
+</section>
+
+<!-- ========================================= -->
+<!-- WiFi                                      -->
+<!-- ========================================= -->
+
+<section
+
+id="wifiPage"
+
+class="page">
+
+<h2>
+
+Network Configuration
+
+</h2>
+
+<div
+
+id="wifiNetworks"
+
+class="wifi-list">
+
+Scanning...
+
+</div>
+
+<div class="divider"></div>
+
+<label>
+
+Manual SSID
+
+</label>
+
+<div class="manual-network active">
+
+<div class="form-group">
+
+<label>
+
+SSID
+
+</label>
+
+<input
+
+id="wifiSsid"
+
+type="text"
+
+placeholder="WiFi Name"
+
+autocomplete="off">
+
+</div>
+
+<div class="form-group">
+
+<label>
+
+Password
+
+</label>
+
+<input
+
+id="wifiPassword"
+
+type="password"
+
+placeholder="WiFi Password"
+
+autocomplete="off">
+
+</div>
+
+</div>
+
+<div class="buttons">
+
+<button
+
+class="secondary"
+
+data-back>
+
+Back
+
+</button>
+
+<button
+
+onclick="validateWiFi().then(r=>{
+
+if(r)nextPage();
+
+})">
+
+Next
+
+</button>
+
+</div>
+
+</section>
+
+</div>
+
+</div>
+
+<!-- ========================================= -->
+<!-- Loading Overlay                           -->
+<!-- ========================================= -->
+
+<div
+
+id="loadingOverlay"
+
+class="loading">
+
+<div
+
+class="loading-content">
+
+<div
+
+class="spinner">
+
+</div>
+
+<p
+
+id="loadingText"
+
+class="loading-text">
+
+Loading...
+
+</p>
+
+</div>
+
+</div>
+
+<!-- ========================================= -->
+<!-- Toast                                     -->
+<!-- ========================================= -->
+
+<div
+
+id="toast"
+
+class="toast">
+
+Ready
+
+</div>
+<!-- ========================================= -->
+<!-- Server Page                               -->
+<!-- ========================================= -->
+
+<section
+    id="serverPage"
+    class="page">
+
+<h2>
+
+Server Configuration
+
+</h2>
+
+<div class="form-group">
+
+<label>
+
+Backend URL
+
+</label>
+
+<input
+
+id="backendUrl"
+
+type="url"
+
+placeholder="https://api.example.com"
+
+autocomplete="off"
+
+spellcheck="false"
+
+autocorrect="off"
+
+autocapitalize="off">
+
+<p class="help">
+
+The backend will automatically provide the MQTT configuration.
+
+</p>
+
+</div>
+
+<div class="buttons">
+
+<button
+class="secondary"
+data-back>
+
+Back
+
+</button>
+
+<button
+
+onclick="validateServer().then(r=>{
+
+if(r){
+
+populateReview();
+
+nextPage();
+
+}
+
+})">
+
+Next
+
+</button>
+
+</div>
+
+</section>
+
+<!-- ========================================= -->
+<!-- Review Page                               -->
+<!-- ========================================= -->
+
+<section
+
+id="reviewPage"
+
+class="page">
+
+<h2>
+
+Review Configuration
+
+</h2>
+
+<p>
+
+Please verify the information below before saving.
+
+</p>
+
+<div class="review">
+
+<div class="review-title">
+
+Hardware ID
+
+</div>
+
+<div
+
+id="reviewHardware"
+
+class="review-value">
+
+-
+
+</div>
+
+<div class="review-title">
+
+WiFi Network
+
+</div>
+
+<div
+
+id="reviewWifi"
+
+class="review-value">
+
+-
+
+</div>
+
+<div class="review-title">
+
+Backend URL
+
+</div>
+
+<div
+
+id="reviewServer"
+
+class="review-value">
+
+-
+
+</div>
+
+</div>
+
+<div class="divider"></div>
+
+<div class="buttons">
+
+<button
+
+class="secondary"
+
+data-back>
+
+Back
+
+</button>
+
+<button
+
+onclick="provision()">
+
+Save Configuration
+
+</button>
+
+</div>
+
+</section>
+
+<!-- ========================================= -->
+<!-- Success Page                              -->
+<!-- ========================================= -->
+
+<section
+
+id="successPage"
+
+class="page">
+
+<div class="success">
+
+<div class="success-icon">
+
+✓
+
+</div>
+
+<h2>
+
+Configuration Saved
+
+</h2>
+
+<p>
+
+Your Home Security Controller has been configured successfully.
+
+</p>
+
+<p>
+
+The controller will restart automatically in
+
+</p>
+
+<div
+
+id="countdown"
+
+class="countdown">
+
+5
+
+</div>
+
+<p>
+
+Please wait while the device restarts.
+
+</p>
+
+</div>
+
+</section>
+
+</div>
+
+</div>
+
+<!-- ========================================= -->
+<!-- JavaScript                                -->
+<!-- ========================================= -->
+
+<script src="app.js"></script>
+
+</body>
+
+</html>

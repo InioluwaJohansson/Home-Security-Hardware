@@ -53,4 +53,10 @@ public:
 
     virtual bool ReadExternal(int id) = 0;
 
+
+    virtual void SetBuzzer(bool active) = 0;
+
+    virtual void SetSiren(bool active) = 0;
+    virtual void Beep(uint16_t duration = 100) = 0;
+
 };

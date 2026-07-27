@@ -105,3 +105,11 @@ private:
 
     void SetAddress(uint8_t channel);
 };
+namespace HardwareOutputs
+{
+    constexpr uint8_t AlarmChip = 2;   // Third MCP23017
+
+    constexpr uint8_t BuzzerPin = 8;   // GPB0
+
+    constexpr uint8_t SirenPin  = 9;   // GPB1
+}

@@ -34,14 +34,24 @@ private:
 struct Config
 {
     String HardwareId;
+
     String AuthKey;
 
     String WifiSSID;
+
     String WifiPassword;
 
+    String BackendUrl;
+
     String MqttHost;
+
     uint16_t MqttPort = 1883;
+
     String MqttUsername;
+
     String MqttPassword;
-    bool IsProvisioned;
+
+    uint16_t HeartbeatInterval = 30;
+
+    bool IsProvisioned = false;
 };

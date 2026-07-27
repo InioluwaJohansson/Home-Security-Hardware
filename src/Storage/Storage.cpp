@@ -17,6 +17,7 @@ bool StorageManager::SaveConfiguration(const DeviceConfiguration& config)
     preferences.putUShort("mqttPort", config.MqttPort);
     preferences.putString("mqttUsername", config.MqttUsername);
     preferences.putUShort("mqttPassword", config.MqttPassword);
+    preferences.putUShort("heartbeatInterval", config.HeartbeatInterval);
     preferences.putBool("isProvisioned", config.IsProvisioned);
     return true;
 }
@@ -32,6 +33,7 @@ DeviceConfiguration StorageManager::LoadConfiguration()
     config.MqttPort = preferences.getUShort("mqttPort", 1883);
     config.MqttUsername = preferences.getString("mqttUsername", "");
     config.MqttPassword = preferences.getUShort("mqttPassword", "");
+    config.MqttPort = preferences.getUShort("heartbeatInterval", 1883);
     config.IsProvisioned = preferences.getUShort("isProvisioned", false);
     return config;
 }
