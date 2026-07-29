@@ -79,7 +79,7 @@ void SensorController::UpdateDoors()
         _mqtt.Publish(
             "home/" +
             _devices.GetHardwareId() +
-            "/door/state",
+            "/state",
             json);
     }
 }
@@ -122,7 +122,7 @@ void SensorController::UpdateWindows()
         _mqtt.Publish(
             "home/" +
             _devices.GetHardwareId() +
-            "/window/state",
+            "/state",
             json);
     }
 }
@@ -159,7 +159,7 @@ void SensorController::UpdateExternals()
         _mqtt.Publish(
             "home/" +
             _devices.GetHardwareId() +
-            "/external/state",
+            "/state",
             json);
     }
 }
@@ -170,7 +170,7 @@ void SensorController::UpdateResetButton()
 
     static unsigned long pressedTime = 0;
 
-    bool current = _hardware.ReadResetButton();
+    //bool current = _hardware.ReadResetButton();
 
     if (current)
     {
@@ -183,7 +183,7 @@ void SensorController::UpdateResetButton()
 
         if (millis() - pressedTime >= 10000)
         {
-            _devices.ResetController();
+            //_devices.ResetController();
 
             pressed = false;
         }
