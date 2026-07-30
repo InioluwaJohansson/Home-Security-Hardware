@@ -30,13 +30,22 @@ void ExternalManager::Apply(const ExternalDeviceState& state)
         
             _hardware.SetExternal(state.ExternalId, state.IsActive);
 
-        _cache[state.ExternalId] = state;
-        return;}
-
-    // Input device.
-    // No hardware output required.
-
+        }
+        
+        // Input device.
+        // No hardware output required.
     _cache[state.ExternalId] = state;
+
+    if(StateChanged)
+    {
+        GenericDeviceUpdateState update;
+
+        update.Id = state.ExternalId;
+        update.Type = FacilityType::External;
+        update.IsTriggered = state.IsTriggered;
+        update.IsActive = state.IsActive;
+        StateChanged(update);
+    }
 }
 
 void ExternalManager::Update(const GenericDeviceUpdateState& update)

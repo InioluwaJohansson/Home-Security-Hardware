@@ -30,11 +30,9 @@ enum class NFIDState
 
 struct NFIDContext
 {
-    NFIDOperation Operation =
-        NFIDOperation::None;
+    NFIDOperation Operation = NFIDOperation::None;
 
-    NFIDState State =
-        NFIDState::Idle;
+    NFIDState State = NFIDState::Idle;
 
     String NFIDCode;
 

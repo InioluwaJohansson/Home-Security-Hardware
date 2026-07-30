@@ -27,27 +27,6 @@ bool PN532Protocol::Initialize()
 
     return true;
 }
-bool PN532Protocol::WaitForCard(
-    uint32_t timeout)
-{
-    uint32_t start = millis();
-
-    while(millis() - start < timeout)
-    {
-        if(_nfc->readPassiveTargetID(
-                PN532_MIFARE_ISO14443A,
-                _uid,
-                &_uidLength,
-                50))
-        {
-            return true;
-        }
-
-        delay(20);
-    }
-
-    return false;
-}
 bool PN532Protocol::CardPresent()
 {
     return _nfc->readPassiveTargetID(
@@ -129,8 +108,6 @@ bool PN532Protocol::ReadPages(
 bool PN532Protocol::WriteCode(
     const String& code)
 {
-    if(!WaitForCard())
-        return false;
 
     if(!ClearUserMemory())
         return false;
@@ -142,8 +119,6 @@ bool PN532Protocol::WriteCode(
 bool PN532Protocol::ReadCode(
     String& code)
 {
-    if(!WaitForCard())
-        return false;
 
     static constexpr uint16_t UserMemorySize =
     (LastUserPage - FirstUserPage + 1) * 4;

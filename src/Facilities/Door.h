@@ -2,9 +2,12 @@
 
 #include "DeviceModels.h"
 #include "../Hardware/IHardwareController.h"
+#include <functional>
 class DoorManager
 {
 public:
+
+    std::function<void(const GenericDeviceUpdateState&)> StateChanged;
     
     void Initialize();
     

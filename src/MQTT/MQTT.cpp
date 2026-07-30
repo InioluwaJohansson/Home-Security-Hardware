@@ -139,3 +139,23 @@ void MqttManager::Callback(char* topic, byte* payload, unsigned int length)
             message);
     */
 }
+void MqttManager::PublishHeartbeat(
+    const HardwareHeartBeatDto& dto)
+{
+    StaticJsonDocument<256> doc;
+
+    doc["Token"] = dto.Token;
+    doc["HardwareId"] = dto.HardwareId;
+    doc["PowerActive"] = dto.PowerActive;
+
+    Publish(
+        "home/" + dto.HardwareId + "/heartbeat",
+        doc);
+}
+void PublishNFIDVerify(const NFIDVerifyDto& dto){
+    StaticJsonDocument<256> doc;
+    doc["Token"] = dto.Token;
+    doc["HardwareId"] = dto.HardwareId;
+    doc["NFIDCode"] = dto.NFIDCode;
+    Publish("home/" + dto.HardwareId + "/NFID/verify", doc);
+}

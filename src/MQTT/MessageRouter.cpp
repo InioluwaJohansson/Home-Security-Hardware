@@ -4,10 +4,12 @@
 
 MessageRouter::MessageRouter(
     ConfigurationManager& configuration,
-    DeviceManager& deviceManager)
+    DeviceManager& deviceManager,
+    Access& access)
     :
     _configuration(configuration),
-    _deviceManager(deviceManager)
+    _deviceManager(deviceManager),
+    _access(access)
 {
 }
 void MessageRouter::Route(
@@ -86,10 +88,28 @@ void MessageRouter::HandleCommand(
 void MessageRouter::HandleFingerprint(
     const JsonDocument& doc)
 {
-    Serial.println("Fingerprint Verification");
+    bool status = doc["status"] | false;
+
+    if(status)
+    {
+        _access.Grant();
+    }
+    else
+    {
+        _access.Deny();
+    }
 }
 void MessageRouter::HandleRFID(
     const JsonDocument& doc)
 {
-    Serial.println("RFID Response");
+    bool status = doc["status"] | false;
+
+    if(status)
+    {
+        _access.Grant();
+    }
+    else
+    {
+        _access.Deny();
+    }
 }

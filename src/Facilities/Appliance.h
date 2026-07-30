@@ -2,10 +2,13 @@
 
 #include "DeviceModels.h"
 #include "../Hardware/IHardwareController.h"
+#include <functional>
 class ApplianceManager
 {
 public:
 
+    std::function<void(const GenericDeviceUpdateState&)> StateChanged;
+    
     void Initialize();
 
     void Apply(const ApplianceDeviceState& state);

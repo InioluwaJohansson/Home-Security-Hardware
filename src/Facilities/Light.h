@@ -2,11 +2,13 @@
 
 #include "DeviceModels.h"
 #include "../Hardware/IHardwareController.h"
-
+#include <functional>
 class LightManager
 {
 public:
 
+    std::function<void(const GenericDeviceUpdateState&)> StateChanged;
+    
     void Initialize();
 
     void Apply(const LightDeviceState& state);

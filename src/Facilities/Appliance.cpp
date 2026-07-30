@@ -29,6 +29,16 @@ void ApplianceManager::Apply(const ApplianceDeviceState& state)
     _hardware.SetAppliance(state.ApplianceId, state.IsActive);
 
     _cache[state.ApplianceId] = state;
+    if(StateChanged)
+    {
+        GenericDeviceUpdateState update;
+
+        update.Id = state.ApplianceId;
+        update.Type = FacilityType::Appliance;
+        update.IsActive = state.IsActive;
+
+        StateChanged(update);
+    }
 }
 
 void ApplianceManager::Update(const GenericDeviceUpdateState& update)

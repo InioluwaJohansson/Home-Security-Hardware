@@ -2,9 +2,12 @@
 
 #include "DeviceModels.h"
 #include "../Hardware/IHardwareController.h"
+#include <functional>
 class ExternalManager
 {
 public:
+
+    std::function<void(const GenericDeviceUpdateState&)> StateChanged;
     
     void Initialize();
     

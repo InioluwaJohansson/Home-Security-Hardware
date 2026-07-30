@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 #include "../Models/DeviceModels.h"
-
+#include <functional>
 class LightManager;
 class ApplianceManager;
 class DoorManager;
@@ -14,6 +14,7 @@ class ExternalInputManager;
 class DeviceManager
 {
 public:
+    std::function<void(const GenericDeviceUpdateState&)> DeviceStateChanged;
 
     DeviceManager(
         LightManager& lights,
@@ -37,4 +38,6 @@ private:
     WindowManager& _windows;
     CameraManager& _cameras;
     ExternalInputManager& _externals;
+
+    void OnStateChanged(const GenericDeviceUpdateState& update);
 };

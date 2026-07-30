@@ -1,4 +1,5 @@
 #include "DeviceModels.h"
+#include "Devices.h"
 DeviceManager::DeviceManager(
 
     LightManager& lights,
@@ -28,6 +29,17 @@ _cameras(cameras),
 _externals(externals)
 
 {
+    auto callback = [this](const GenericDeviceUpdateState& update)
+    {
+        OnStateChanged(update);
+    };
+
+    _lights.StateChanged = callback;
+    _appliances.StateChanged = callback;
+    _doors.StateChanged = callback;
+    _windows.StateChanged = callback;
+    _cameras.StateChanged = callback;
+    _externals.StateChanged = callback;
 }
 void DeviceManager::ApplyState(const GenericDeviceState& state)
 {
@@ -101,5 +113,13 @@ void DeviceManager::ApplyUpdate(
             _externals.Update(update);
 
             break;
+    }
+}
+void DeviceManager::OnStateChanged(
+    const GenericDeviceUpdateState& update)
+{
+    if(DeviceStateChanged)
+    {
+        DeviceStateChanged(update);
     }
 }

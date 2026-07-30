@@ -29,6 +29,8 @@ public:
 
     void SubscribeTopics();
 
+    void PublishNFIDVerify(const NFIDVerifyDto& dto);
+
 private:
 
     ConfigurationManager& _configuration;

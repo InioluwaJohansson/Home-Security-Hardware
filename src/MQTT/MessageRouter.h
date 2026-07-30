@@ -7,13 +7,16 @@
 
 class DeviceManager;
 
+class Access;
+
 class MessageRouter
 {
 public:
 
     MessageRouter(
         ConfigurationManager& configuration,
-        DeviceManager& deviceManager);
+        DeviceManager& deviceManager,
+        Access& access);
 
     void Route(
         const String& topic,
@@ -24,6 +27,8 @@ private:
     ConfigurationManager& _configuration;
 
     DeviceManager& _deviceManager;
+
+    Access& _access;
 
     void HandleAuthentication(const JsonDocument& doc);
 

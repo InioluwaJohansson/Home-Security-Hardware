@@ -47,6 +47,19 @@ void WindowManager::Apply(const WindowDeviceState& state)
     }
 
     _cache[state.WindowId] = state;
+
+    if(StateChanged)
+    {
+        GenericDeviceUpdateState update;
+
+        update.Id = state.WindowId;
+        update.Type = FacilityType::Window;
+        update.IsLocked = state.IsLocked;
+        update.IsOpen = state.IsOpen;
+
+        StateChanged(update);
+    }
+    
 }
 
 void WindowManager::Update(const GenericDeviceUpdateState& update)

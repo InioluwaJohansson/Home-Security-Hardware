@@ -46,6 +46,18 @@ void DoorManager::Apply(const DoorDeviceState& state)
     }
 
     _cache[state.DoorId] = state;
+
+    if(StateChanged)
+    {
+        GenericDeviceUpdateState update;
+
+        update.Id = state.DoorId;
+        update.Type = FacilityType::Door;
+        update.IsLocked = state.IsLocked;
+        update.IsOpen = state.IsOpen;
+
+        StateChanged(update);
+    }
 }
 
 void DoorManager::Update(const GenericDeviceUpdateState& update)

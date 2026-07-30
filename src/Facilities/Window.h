@@ -2,9 +2,12 @@
 
 #include "DeviceModels.h"
 #include "../Hardware/IHardwareController.h"
+#include <functional>
 class WindowManager
 {
-    public:
+public:
+
+    std::function<void(const GenericDeviceUpdateState&)> StateChanged;
     
     void Initialize();
     

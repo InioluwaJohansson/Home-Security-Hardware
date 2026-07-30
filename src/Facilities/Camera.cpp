@@ -29,6 +29,16 @@ void CameraManager::Apply(const CameraDeviceState& state)
     _hardware.SetCamera(state.CameraId, state.IsActive);
 
     _cache[state.CameraId] = state;
+    if(StateChanged)
+    {
+        GenericDeviceUpdateState update;
+
+        update.Id = state.CameraId;
+        update.Type = FacilityType::Camera;
+        update.IsActive = state.IsActive;
+
+        StateChanged(update);
+    }
 }
 
 void CameraManager::Update(const GenericDeviceUpdateState& update)
