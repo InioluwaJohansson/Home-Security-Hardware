@@ -13,6 +13,13 @@ enum class FacilityType
     External = 6
 };
 
+enum class DoorType
+{
+    Interior = 1,
+    Exterior = 2,
+    Gate = 3
+};
+
 struct ApplianceDeviceState
 {
     int ApplianceId;
@@ -45,6 +52,7 @@ struct DoorDeviceState
     int DoorId;
     bool IsLocked;
     bool IsOpen;
+    DoorType Type;
 };
 
 struct ExternalDeviceState
@@ -64,6 +72,7 @@ struct GenericDeviceUpdateState
     bool IsTriggered;
     bool IsActive;
     bool PowerActive;
+    DoorType DoorCategory;
     String Token;
 };
 
