@@ -38,3 +38,10 @@ struct NFIDContext
 
     unsigned long StartedAt = 0;
 };
+
+struct NFIDVerifyDto
+{
+    String Token;
+    String HardwareId;
+    String NFIDCode;
+};

@@ -1,17 +1,26 @@
 #include "MessageRouter.h"
 
 #include "../Config/Config.h"
+#include "../Devices/DeviceManager.h"
+#include "../Access/Access.h"
+#include "../Fingerprint/Fingerprint.h"
+#include "../NFID/NFID.h"
 
 MessageRouter::MessageRouter(
     ConfigurationManager& configuration,
     DeviceManager& deviceManager,
-    Access& access)
+    Access& access,
+    Fingerprint& fingerprint,
+    NFID& nfid)
     :
     _configuration(configuration),
     _deviceManager(deviceManager),
-    _access(access)
+    _access(access),
+    _fingerprint(fingerprint),
+    _nfid(nfid)
 {
 }
+
 void MessageRouter::Route(
     const String& topic,
     const String& payload)
@@ -44,9 +53,21 @@ void MessageRouter::Route(
         return;
     }
 
+    if(topic.endsWith("/fingerprint"))
+    {
+        HandleFingerprintRequest(doc);
+        return;
+    }
+
     if(topic.endsWith("/fingerprint/verify/response"))
     {
         HandleFingerprint(doc);
+        return;
+    }
+
+    if(topic.endsWith("/NFID"))
+    {
+        HandleNFIDWrite(doc);
         return;
     }
 
@@ -56,10 +77,11 @@ void MessageRouter::Route(
         return;
     }
 }
+
 void MessageRouter::HandleAuthentication(
     const JsonDocument& doc)
 {
-    bool status = doc["status"];
+    bool status = doc["status"] | false;
 
     if(!status)
     {
@@ -67,24 +89,80 @@ void MessageRouter::HandleAuthentication(
         return;
     }
 
-    String token = doc["token"];
+    String token = doc["token"] | "";
+
+    if(token.isEmpty())
+    {
+        Serial.println("Authentication response contains no token");
+        return;
+    }
 
     _configuration.SetJwt(token);
 
-    Serial.println("JWT Saved");
+    _configuration.Save();
 
-    HandleSync(doc);
+    Serial.println("JWT Saved");
 }
+
 void MessageRouter::HandleSync(
     const JsonDocument& doc)
 {
-    _deviceManager.ApplyState(doc);
+    GenericDeviceState state;
+
+    deserializeJson(
+        state,
+        doc.as<GenericDeviceState>());
+        // GenericDeviceState state = doc.as<GenericDeviceState>();
+    String token = doc["token"] | "";
+
+    if(token.isEmpty())
+    {
+        Serial.println("Authentication response contains no token");
+        return;
+    }
+
+    _configuration.SetJwt(token);
+
+    _configuration.Save();
+
+    Serial.println("JWT Saved");
+
+    _deviceManager.ApplyState(state);
 }
+
 void MessageRouter::HandleCommand(
     const JsonDocument& doc)
 {
-    _deviceManager.ApplyUpdate(doc);
+    GenericDeviceUpdateState update;
+
+    deserializeJson(
+        update,
+        doc.as<JsonObject>());
+
+    _deviceManager.ApplyUpdate(update);
 }
+
+void MessageRouter::HandleHeartbeat(
+    const JsonDocument& doc)
+{
+    // Heartbeat responses can be handled here
+    // if the backend sends one.
+}
+
+void MessageRouter::HandleFingerprintRequest(
+    const JsonDocument& doc)
+{
+    int personId = doc["personId"] | -1;
+
+    if(personId < 0)
+    {
+        Serial.println("Invalid fingerprint request");
+        return;
+    }
+
+    _fingerprint.RequestCapture(personId);
+}
+
 void MessageRouter::HandleFingerprint(
     const JsonDocument& doc)
 {
@@ -99,6 +177,21 @@ void MessageRouter::HandleFingerprint(
         _access.Deny();
     }
 }
+
+void MessageRouter::HandleNFIDWrite(
+    const JsonDocument& doc)
+{
+    String nfidCode = doc["NFIDCode"] | "";
+
+    if(nfidCode.isEmpty())
+    {
+        Serial.println("Invalid NFID code");
+        return;
+    }
+
+    _nfid.QueueWrite(nfidCode);
+}
+
 void MessageRouter::HandleRFID(
     const JsonDocument& doc)
 {

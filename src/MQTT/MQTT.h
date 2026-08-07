@@ -3,14 +3,19 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-
+#include <Arduino.h>
 #include "../Config/Config.h"
+#include "../Models/HardwareHeartBeatDto.h"
+#include "../Models/NFIDVerifyDto.h"
+
+class MessageRouter;
 
 class MqttManager
 {
 public:
 
-    explicit MqttManager(ConfigurationManager& configuration);
+    explicit MqttManager(
+        ConfigurationManager& configuration);
 
     bool Connect();
 
@@ -29,7 +34,14 @@ public:
 
     void SubscribeTopics();
 
-    void PublishNFIDVerify(const NFIDVerifyDto& dto);
+    void SetMessageRouter(
+        MessageRouter& router);
+
+    void PublishHeartbeat(
+        const HardwareHeartBeatDto& dto);
+
+    void PublishNFIDVerify(
+        const NFIDVerifyDto& dto);
 
 private:
 
@@ -40,6 +52,8 @@ private:
     PubSubClient _mqttClient;
 
     unsigned long _lastReconnectAttempt = 0;
+
+    static MessageRouter* _router;
 
     static void Callback(
         char* topic,

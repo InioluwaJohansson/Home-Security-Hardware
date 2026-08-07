@@ -2,7 +2,7 @@
 
 #include "../Config/Config.h"
 #include "../MQTT/MqttManager.h"
-#include "../Models/NFIDVerifyDto.h"
+#include "NFIDModels.h"
 
 NFID::NFID(
     ConfigurationManager& configuration,

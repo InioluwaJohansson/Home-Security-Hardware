@@ -6,8 +6,9 @@
 #include "../Config/Config.h"
 
 class DeviceManager;
-
 class Access;
+class Fingerprint;
+class NFID;
 
 class MessageRouter
 {
@@ -16,7 +17,9 @@ public:
     MessageRouter(
         ConfigurationManager& configuration,
         DeviceManager& deviceManager,
-        Access& access);
+        Access& access,
+        Fingerprint& fingerprint,
+        NFID& nfid);
 
     void Route(
         const String& topic,
@@ -30,15 +33,31 @@ private:
 
     Access& _access;
 
-    void HandleAuthentication(const JsonDocument& doc);
+    Fingerprint& _fingerprint;
 
-    void HandleSync(const JsonDocument& doc);
+    NFID& _nfid;
 
-    void HandleCommand(const JsonDocument& doc);
+    void HandleAuthentication(
+        const JsonDocument& doc);
 
-    void HandleHeartbeat(const JsonDocument& doc);
+    void HandleSync(
+        const JsonDocument& doc);
 
-    void HandleFingerprint(const JsonDocument& doc);
+    void HandleCommand(
+        const JsonDocument& doc);
 
-    void HandleRFID(const JsonDocument& doc);
+    void HandleHeartbeat(
+        const JsonDocument& doc);
+
+    void HandleFingerprint(
+        const JsonDocument& doc);
+
+    void HandleRFID(
+        const JsonDocument& doc);
+
+    void HandleFingerprintRequest(
+        const JsonDocument& doc);
+
+    void HandleNFIDWrite(
+        const JsonDocument& doc);
 };

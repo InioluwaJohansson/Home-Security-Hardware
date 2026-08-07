@@ -1,14 +1,27 @@
 #include "MQTT.h"
+#include <Arduino.h>
+#include "../Router/MessageRouter.h"
 
-MqttManager::MqttManager(ConfigurationManager& configuration)
-    : _configuration(configuration),
-      _mqttClient(_wifiClient)
+MessageRouter* MqttManager::_router = nullptr;
+
+MqttManager::MqttManager(
+    ConfigurationManager& configuration)
+    :
+    _configuration(configuration),
+    _mqttClient(_wifiClient)
 {
+}
+
+void MqttManager::SetMessageRouter(
+    MessageRouter& router)
+{
+    _router = &router;
 }
 
 bool MqttManager::Connect()
 {
-    auto& config = _configuration.GetConfiguration();
+    auto& config =
+        _configuration.GetConfiguration();
 
     _mqttClient.setServer(
         config.MqttHost.c_str(),
@@ -21,9 +34,10 @@ bool MqttManager::Connect()
 
 bool MqttManager::Reconnect()
 {
-    auto& config = _configuration.GetConfiguration();
+    auto& config =
+        _configuration.GetConfiguration();
 
-    if (_mqttClient.connected())
+    if(_mqttClient.connected())
         return true;
 
     bool connected =
@@ -32,12 +46,15 @@ bool MqttManager::Reconnect()
             config.MqttUsername.c_str(),
             config.MqttPassword.c_str());
 
-    if (!connected)
+    if(!connected)
+    {
         return false;
+    }
 
     SubscribeTopics();
 
-    JsonDocument doc;
+    StaticJsonDocument<128> doc;
+
     doc["online"] = true;
 
     Publish(
@@ -45,12 +62,14 @@ bool MqttManager::Reconnect()
         doc,
         true);
 
+    _lastReconnectAttempt = millis();
+
     return true;
 }
 
 void MqttManager::Disconnect()
 {
-    if (_mqttClient.connected())
+    if(_mqttClient.connected())
     {
         _mqttClient.disconnect();
     }
@@ -63,13 +82,14 @@ bool MqttManager::IsConnected()
 
 void MqttManager::Loop()
 {
-    if (!_mqttClient.connected())
+    if(!_mqttClient.connected())
     {
         unsigned long now = millis();
 
-        if (now - _lastReconnectAttempt >= 5000)
+        if(now - _lastReconnectAttempt >= 5000)
         {
             _lastReconnectAttempt = now;
+
             Reconnect();
         }
 
@@ -81,19 +101,32 @@ void MqttManager::Loop()
 
 void MqttManager::SubscribeTopics()
 {
-    auto& config = _configuration.GetConfiguration();
+    auto& config =
+        _configuration.GetConfiguration();
 
-    String base = "home/" + config.HardwareId;
+    String base =
+        "home/" + config.HardwareId;
 
-    _mqttClient.subscribe((base + "/command").c_str());
+    _mqttClient.subscribe(
+        (base + "/command").c_str());
 
-    _mqttClient.subscribe((base + "/sync").c_str());
+    _mqttClient.subscribe(
+        (base + "/sync").c_str());
 
-    _mqttClient.subscribe((base + "/fingerprint/verify/response").c_str());
+    _mqttClient.subscribe(
+        (base + "/fingerprint").c_str());
 
-    _mqttClient.subscribe((base + "/NFID/Data").c_str());
+    _mqttClient.subscribe(
+        (base + "/fingerprint/verify/response").c_str());
 
-    _mqttClient.subscribe((base + "/Hardware/Auth/Response").c_str());
+    _mqttClient.subscribe(
+        (base + "/NFID").c_str());
+
+    _mqttClient.subscribe(
+        (base + "/NFID/Data").c_str());
+
+    _mqttClient.subscribe(
+        (base + "/Hardware/Auth/Response").c_str());
 }
 
 bool MqttManager::Publish(
@@ -101,14 +134,16 @@ bool MqttManager::Publish(
     JsonDocument& document,
     bool retained)
 {
-    if (!_mqttClient.connected())
+    if(!_mqttClient.connected())
+    {
         return false;
-
-    document["Token"] = _configuration.GetJwt();
+    }
 
     String json;
 
-    serializeJson(document, json);
+    serializeJson(
+        document,
+        json);
 
     return _mqttClient.publish(
         topic.c_str(),
@@ -116,13 +151,21 @@ bool MqttManager::Publish(
         retained);
 }
 
-void MqttManager::Callback(char* topic, byte* payload, unsigned int length)
+void MqttManager::Callback(
+    char* topic,
+    byte* payload,
+    unsigned int length)
 {
     String message;
 
-    for (unsigned int i = 0; i < length; i++)
+    message.reserve(length);
+
+    for(unsigned int i = 0;
+        i < length;
+        i++)
     {
-        message += (char)payload[i];
+        message +=
+            static_cast<char>(payload[i]);
     }
 
     Serial.print("[MQTT] ");
@@ -131,31 +174,56 @@ void MqttManager::Callback(char* topic, byte* payload, unsigned int length)
 
     Serial.println(message);
 
-    /*
-        Next step:
+    if(_router == nullptr)
+    {
+        Serial.println(
+            "[MQTT] MessageRouter not connected");
 
-        MessageRouter::Route(
-            topic,
-            message);
-    */
+        return;
+    }
+
+    _router->Route(
+        String(topic),
+        message);
 }
+
 void MqttManager::PublishHeartbeat(
     const HardwareHeartBeatDto& dto)
 {
     StaticJsonDocument<256> doc;
 
     doc["Token"] = dto.Token;
-    doc["HardwareId"] = dto.HardwareId;
-    doc["PowerActive"] = dto.PowerActive;
+
+    doc["HardwareId"] =
+        dto.HardwareId;
+
+    doc["PowerActive"] =
+        dto.PowerActive;
 
     Publish(
-        "home/" + dto.HardwareId + "/heartbeat",
+        "home/" +
+        dto.HardwareId +
+        "/heartbeat",
         doc);
 }
-void PublishNFIDVerify(const NFIDVerifyDto& dto){
+
+void MqttManager::PublishNFIDVerify(
+    const NFIDVerifyDto& dto)
+{
     StaticJsonDocument<256> doc;
-    doc["Token"] = dto.Token;
-    doc["HardwareId"] = dto.HardwareId;
-    doc["NFIDCode"] = dto.NFIDCode;
-    Publish("home/" + dto.HardwareId + "/NFID/verify", doc);
+
+    doc["Token"] =
+        dto.Token;
+
+    doc["HardwareId"] =
+        dto.HardwareId;
+
+    doc["NFIDCode"] =
+        dto.NFIDCode;
+
+    Publish(
+        "home/" +
+        dto.HardwareId +
+        "/NFID/verify",
+        doc);
 }
