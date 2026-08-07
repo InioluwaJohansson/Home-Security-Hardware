@@ -8,18 +8,27 @@ class ApplianceManager
 {
 public:
 
-    std::function<void(const GenericDeviceUpdateState&)> StateChanged;
-    
+    ApplianceManager(
+        IHardwareController& hardware);
+
+    std::function<void(
+        const GenericDeviceUpdateState&)>
+        StateChanged;
+
     void Initialize();
 
-    void Apply(const ApplianceDeviceState& state);
+    void Apply(
+        const ApplianceDeviceState& state);
 
-    void Update(const GenericDeviceUpdateState& update);
+    void Update(
+        const GenericDeviceUpdateState& update);
 
-    ApplianceDeviceState GetCurrentState(int applianceId);
-    
+    ApplianceDeviceState GetCurrentState(
+        int applianceId);
+
 private:
-    IHardwareController& _hardware;
 
     ApplianceDeviceState _cache[MAX_APPLIANCES];
+
+    IHardwareController& _hardware;
 };

@@ -35,7 +35,7 @@ void MultiplexerController::SetAddress(uint8_t channel)
     digitalWrite(Pins::MUX_S3, bitRead(channel, 3));
 }
 
-bool MultiplexerController::DigitalRead(uint8_t channel)
+bool MultiplexerController::ReadChannel(uint8_t channel)
 {
     SelectChannel(channel);
 

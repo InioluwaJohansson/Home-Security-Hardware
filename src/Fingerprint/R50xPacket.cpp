@@ -1,15 +1,15 @@
 #include "R50xPacket.h"
 
-R30xPacket::R30xPacket()
+R50xPacket::R50xPacket()
 {
     Clear();
 }
 
-void R30xPacket::Clear()
+void R50xPacket::Clear()
 {
-    _address = R30x::Address;
+    _address = R50x::Address;
 
-    _type = R30x::PacketType::CommandPacket;
+    _type = R50x::PacketType::CommandPacket;
 
     _payloadLength = 0;
 
@@ -23,27 +23,27 @@ void R30xPacket::Clear()
         sizeof(_payload));
 }
 
-void R30xPacket::SetAddress(
+void R50xPacket::SetAddress(
     uint32_t address)
 {
     _address = address;
 }
 
-void R30xPacket::SetPacketType(
-    R30x::PacketType type)
+void R50xPacket::SetPacketType(
+    R50x::PacketType type)
 {
     _type = type;
 }
 
-void R30xPacket::SetInstruction(
-    R30x::Instruction instruction)
+void R50xPacket::SetInstruction(
+    R50x::Instruction instruction)
 {
     _payload[0] = static_cast<uint8_t>(instruction);
 
     _payloadLength = 1;
 }
 
-void R30xPacket::SetPayload(
+void R50xPacket::SetPayload(
     const uint8_t* data,
     uint16_t length)
 {
@@ -59,7 +59,7 @@ void R30xPacket::SetPayload(
 
     _payloadLength = length;
 }
-uint16_t R30xPacket::CalculateChecksum() const
+uint16_t R50xPacket::CalculateChecksum() const
 {
     uint16_t checksum = 0;
 
@@ -77,13 +77,13 @@ uint16_t R30xPacket::CalculateChecksum() const
 
     return checksum;
 }
-bool R30xPacket::Send(
+bool R50xPacket::Send(
     HardwareSerial& serial)
 {
     _checksum = CalculateChecksum();
 
-    serial.write(highByte(R30x::Header));
-    serial.write(lowByte(R30x::Header));
+    serial.write(highByte(R50x::Header));
+    serial.write(lowByte(R50x::Header));
 
     serial.write((_address >> 24) & 0xFF);
     serial.write((_address >> 16) & 0xFF);
@@ -106,35 +106,7 @@ bool R30xPacket::Send(
 
     return true;
 }
-bool R30xProtocol::VerifyPassword()
-{
-    R30xPacket packet;
-
-    packet.SetInstruction(
-        R30x::Instruction::VerifyPassword);
-
-    packet.Send(_serial);
-
-    packet.Receive(_serial);
-
-    return packet.ConfirmationCode() ==
-           R30x::Confirmation::Success;
-}
-bool R30xProtocol::GenerateImage()
-{
-    R30xPacket packet;
-
-    packet.SetInstruction(
-        R30x::Instruction::GenImg);
-
-    packet.Send(_serial);
-
-    packet.Receive(_serial);
-
-    return packet.ConfirmationCode() ==
-           R30x::Confirmation::Success;
-}
-bool R30xPacket::Receive(
+bool R50xPacket::Receive(
     HardwareSerial& serial,
     uint32_t timeout)
 {
@@ -162,7 +134,7 @@ bool R30xPacket::Receive(
             (serial.read() << 8) |
              serial.read();
 
-        if (header == R30x::Header)
+        if (header == R50x::Header)
         {
             break;
         }
@@ -195,7 +167,7 @@ bool R30xPacket::Receive(
             return false;
     }
 
-    _type = static_cast<R30x::PacketType>(
+    _type = static_cast<R50x::PacketType>(
         serial.read());
 
     //-------------------------------
@@ -261,42 +233,42 @@ bool R30xPacket::Receive(
 
     return _valid;
 }
-uint32_t R30xPacket::Address() const
+uint32_t R50xPacket::Address() const
 {
     return _address;
 }
-R30x::PacketType R30xPacket::Type() const
+R50x::PacketType R50xPacket::Type() const
 {
     return _type;
 }
-const uint8_t* R30xPacket::Payload() const
+const uint8_t* R50xPacket::Payload() const
 {
     return _payload;
 }
-uint16_t R30xPacket::PayloadLength() const
+uint16_t R50xPacket::PayloadLength() const
 {
     return _payloadLength;
 }
-uint8_t R30xPacket::ConfirmationCode() const
+uint8_t R50xPacket::ConfirmationCode() const
 {
     if(_payloadLength == 0)
         return 0xFF;
 
     return _payload[0];
 }
-bool R30xPacket::IsValid() const
+bool R50xPacket::IsValid() const
 {
     return _valid;
 }
-bool R30xPacket::IsAckPacket() const
+bool R50xPacket::IsAckPacket() const
 {
-    return _type == R30x::PacketType::AckPacket;
+    return _type == R50x::PacketType::AckPacket;
 }
-bool R30xPacket::IsDataPacket() const
+bool R50xPacket::IsDataPacket() const
 {
-    return _type == R30x::PacketType::DataPacket;
+    return _type == R50x::PacketType::DataPacket;
 }
-bool R30xPacket::IsEndDataPacket() const
+bool R50xPacket::IsEndDataPacket() const
 {
-    return _type == R30x::PacketType::EndDataPacket;
+    return _type == R50x::PacketType::EndDataPacket;
 }

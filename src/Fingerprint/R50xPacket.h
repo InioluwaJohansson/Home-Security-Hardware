@@ -5,11 +5,11 @@
 
 #include "R50xProtocolConstants.h"
 
-class R30xPacket
+class R50xPacket
 {
 public:
 
-    R30xPacket();
+    R50xPacket();
 
     void Clear();
 
@@ -19,14 +19,14 @@ public:
 
     void SetAddress(uint32_t address);
 
-    void SetPacketType(R30x::PacketType type);
+    void SetPacketType(R50x::PacketType type);
 
     void SetPayload(
         const uint8_t* data,
         uint16_t length);
 
     void SetInstruction(
-        R30x::Instruction instruction);
+        R50x::Instruction instruction);
 
     //------------------------------------------------------
     // Serialize
@@ -55,7 +55,7 @@ bool IsEndDataPacket() const;
 
     uint32_t Address() const;
 
-    R30x::PacketType Type() const;
+    R50x::PacketType Type() const;
 
     const uint8_t* Payload() const;
 
@@ -73,7 +73,7 @@ private:
 
     uint32_t _address;
 
-    R30x::PacketType _type;
+    R50x::PacketType _type;
 
     uint8_t _payload[512];
 

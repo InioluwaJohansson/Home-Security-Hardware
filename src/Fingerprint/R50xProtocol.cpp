@@ -2,19 +2,19 @@
 
 #include "R50xPacket.h"
 
-R30xProtocol::R30xProtocol(
+R50xProtocol::R50xProtocol(
     HardwareSerial& serial)
     :
     _serial(serial)
 {
 }
 
-const R30xSystemParameters&
-R30xProtocol::GetSystemParameters() const
+const R50xSystemParameters&
+R50xProtocol::GetSystemParameters() const
 {
     return _systemParameters;
 }
-bool R30xProtocol::Initialize()
+bool R50xProtocol::Initialize()
 {
     _serial.begin(
         57600,
@@ -34,12 +34,12 @@ bool R30xProtocol::Initialize()
 
     return true;
 }
-bool R30xProtocol::VerifyPassword()
+bool R50xProtocol::VerifyPassword()
 {
-    R30xPacket packet;
+    R50xPacket packet;
 
     packet.SetInstruction(
-        R30x::Instruction::VerifyPassword);
+        R50x::Instruction::VerifyPassword);
 
     uint8_t password[4] =
     {
@@ -69,14 +69,14 @@ bool R30xProtocol::VerifyPassword()
     }
 
     return packet.ConfirmationCode() ==
-           R30x::Confirmation::Success;
+           R50x::Confirmation::Success;
 }
-bool R30xProtocol::ReadSystemParameters()
+bool R50xProtocol::ReadSystemParameters()
 {
-    R30xPacket packet;
+    R50xPacket packet;
 
     packet.SetInstruction(
-        R30x::Instruction::ReadSysPara);
+        R50x::Instruction::ReadSysPara);
 
     if(!packet.Send(_serial))
     {
@@ -94,7 +94,7 @@ bool R30xProtocol::ReadSystemParameters()
     }
 
     if(packet.ConfirmationCode() !=
-       R30x::Confirmation::Success)
+       R50x::Confirmation::Success)
     {
         return false;
     }
@@ -181,12 +181,12 @@ bool R30xProtocol::ReadSystemParameters()
 
     return true;
 }
-bool R30xProtocol::GenerateImage()
+bool R50xProtocol::GenerateImage()
 {
-    R30xPacket packet;
+    R50xPacket packet;
 
     packet.SetInstruction(
-        R30x::Instruction::GenImg);
+        R50x::Instruction::GenImg);
 
     if(!packet.Send(_serial))
     {
@@ -204,14 +204,14 @@ bool R30xProtocol::GenerateImage()
     }
 
     return packet.ConfirmationCode() ==
-           R30x::Confirmation::Success;
+           R50x::Confirmation::Success;
 }
-bool R30xProtocol::IsFingerDetected()
+bool R50xProtocol::IsFingerDetected()
 {
-    R30xPacket packet;
+    R50xPacket packet;
 
     packet.SetInstruction(
-        R30x::Instruction::GenImg);
+        R50x::Instruction::GenImg);
 
     if(!packet.Send(_serial))
     {
@@ -230,17 +230,17 @@ bool R30xProtocol::IsFingerDetected()
 
     switch(packet.ConfirmationCode())
     {
-        case R30x::Confirmation::Success:
+        case R50x::Confirmation::Success:
             return true;
 
-        case R30x::Confirmation::NoFinger:
+        case R50x::Confirmation::NoFinger:
             return false;
 
         default:
             return false;
     }
 }
-bool R30xProtocol::UploadImage(
+bool R50xProtocol::UploadImage(
     uint8_t*& image,
     uint32_t& length)
 {
@@ -251,10 +251,10 @@ bool R30xProtocol::UploadImage(
     // Send Upload Image Command
     //---------------------------------------------------
 
-    R30xPacket packet;
+    R50xPacket packet;
 
     packet.SetInstruction(
-        R30x::Instruction::UpImage);
+        R50x::Instruction::UpImage);
 
     if(!packet.Send(_serial))
     {
@@ -276,7 +276,7 @@ bool R30xProtocol::UploadImage(
     }
 
     if(packet.ConfirmationCode() !=
-       R30x::Confirmation::Success)
+       R50x::Confirmation::Success)
     {
         return false;
     }
@@ -294,7 +294,7 @@ bool R30xProtocol::UploadImage(
 
     return true;
 }
-bool R30xProtocol::ReceiveImagePackets(
+bool R50xProtocol::ReceiveImagePackets(
     uint8_t*& image,
     uint32_t& imageLength)
 {
@@ -315,7 +315,7 @@ bool R30xProtocol::ReceiveImagePackets(
 
     while(true)
     {
-        R30xPacket packet;
+        R50xPacket packet;
 
         if(!packet.Receive(_serial,5000))
         {
@@ -397,11 +397,11 @@ bool R30xProtocol::ReceiveImagePackets(
 
     return true;
 }
-bool R30xProtocol::CaptureImage()
+bool R50xProtocol::CaptureImage()
 {
     return GenerateImage();
 }
-void R30xProtocol::Cancel()
+void R50xProtocol::Cancel()
 {
     if(_imageBuffer)
     {

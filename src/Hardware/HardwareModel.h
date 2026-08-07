@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include "../Facilities/Devices.h"
+#include "../Facilities/FacilityLimits.h"
 #include "../Facilities/DeviceModels.h"
 
 struct HardwareEndpoint

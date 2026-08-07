@@ -6,11 +6,11 @@
 #include "IFingerprintProtocol.h"
 #include "R50xSystemParameters.h"
 
-class R30xProtocol : public IFingerprintProtocol
+class R50xProtocol : public IFingerprintProtocol
 {
 public:
 
-    explicit R30xProtocol(
+    explicit R50xProtocol(
         HardwareSerial& serial);
 
     bool Initialize() override;
@@ -24,7 +24,7 @@ public:
         uint32_t& length) override;
 
     void Cancel() override;
-    const R30xSystemParameters&
+    const R50xSystemParameters&
 GetSystemParameters() const;
 
 private:
@@ -68,7 +68,7 @@ private:
     uint32_t _imageLength = 0;
 private:
 
-    R30xSystemParameters _systemParameters;
+    R50xSystemParameters _systemParameters;
 private:
 
     static constexpr uint32_t MaxImageSize = 40000;

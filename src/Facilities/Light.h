@@ -1,27 +1,37 @@
 #pragma once
 
+#include <Arduino.h>
+#include <functional>
+
 #include "DeviceModels.h"
 #include "FacilityLimits.h"
 #include "../Hardware/IHardwareController.h"
-#include <functional>
+
 class LightManager
 {
 public:
 
-    std::function<void(const GenericDeviceUpdateState&)> StateChanged;
-    
+    LightManager(
+        IHardwareController& hardware);
+
+    std::function<void(
+        const GenericDeviceUpdateState&)>
+        StateChanged;
+
     void Initialize();
 
-    void Apply(const LightDeviceState& state);
+    void Apply(
+        const LightDeviceState& state);
 
-    void Update(const GenericDeviceUpdateState& update);
+    void Update(
+        const GenericDeviceUpdateState& update);
 
-    LightDeviceState GetCurrentState(int lightId);
-    
+    LightDeviceState GetCurrentState(
+        int lightId);
+
 private:
-    
+
     LightDeviceState _cache[MAX_LIGHTS];
 
     IHardwareController& _hardware;
-
 };

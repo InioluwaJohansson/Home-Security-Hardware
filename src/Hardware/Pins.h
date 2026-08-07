@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-
+#include <Adafruit_MCP23X17.h>
 namespace Pins
 {
     //==================================================
@@ -59,6 +59,8 @@ namespace Pins
     constexpr uint8_t CAMERA_MUX_SIG     = 39;
     constexpr uint8_t EXTERNAL_MUX_SIG   = 1;
 
+    constexpr uint8_t MUX_SIG   = 1;
+
     //==================================================
     // Alarm
     //==================================================
@@ -100,6 +102,7 @@ public:
     void SelectChannel(uint8_t channel);
 
     bool ReadChannel(uint8_t channel);
+    int AnalogRead(uint8_t channel);
 
 private:
 

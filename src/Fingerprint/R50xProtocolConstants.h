@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-namespace R30x
+namespace R50x
 {
     //--------------------------------------------------
     // Protocol Header

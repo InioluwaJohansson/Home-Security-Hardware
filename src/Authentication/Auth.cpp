@@ -1,6 +1,9 @@
 #include "Auth.h"
-#include <ArduinoJson.h>
+
+#include <Arduino.h>
+#include <WiFi.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 AuthenticationManager::AuthenticationManager(
     ConfigurationManager& configuration)
@@ -12,58 +15,142 @@ bool AuthenticationManager::Authenticate()
 {
     auto& config = _configuration.GetConfiguration();
 
+    if (!WiFi.isConnected())
+    {
+        Serial.println(
+            "[AUTH] WiFi is not connected.");
+
+        return false;
+    }
+
+    if (config.BackendUrl.isEmpty())
+    {
+        Serial.println(
+            "[AUTH] Backend URL is empty.");
+
+        return false;
+    }
+
     HTTPClient http;
 
     String url =
-        "http://" +
-        config.ServerHost +
-        ":" +
-        String(config.ServerPort) +
+        config.BackendUrl +
         "/api/MicroController/Auth";
 
-    http.begin(url);
+    Serial.print("[AUTH] Authenticating: ");
+    Serial.println(url);
+
+    if (!http.begin(url))
+    {
+        Serial.println(
+            "[AUTH] Failed to initialize HTTP client.");
+
+        return false;
+    }
 
     http.addHeader(
         "Content-Type",
         "application/json");
 
-    StaticJsonDocument<256> request;
+    JsonDocument request;
 
-    request["hardwareId"] = config.HardwareId;
+    request["hardwareId"] =
+        config.HardwareId;
 
-    request["authKey"] = config.AuthKey;
+    request["authKey"] =
+        config.AuthKey;
 
     String body;
 
-    serializeJson(request, body);
+    serializeJson(
+        request,
+        body);
 
-    int statusCode = http.POST(body);
+    int statusCode =
+        http.POST(body);
 
-    if (statusCode != HTTP_CODE_OK)
+    if (statusCode <= 0)
     {
+        Serial.print(
+            "[AUTH] HTTP error: ");
+
+        Serial.println(
+            http.errorToString(statusCode));
+
         http.end();
+
         return false;
     }
 
-    String response = http.getString();
+    Serial.print(
+        "[AUTH] HTTP status: ");
+
+    Serial.println(statusCode);
+
+    if (statusCode != HTTP_CODE_OK)
+    {
+        String response =
+            http.getString();
+
+        Serial.println(
+            "[AUTH] Authentication failed.");
+
+        Serial.println(response);
+
+        http.end();
+
+        return false;
+    }
+
+    String response =
+        http.getString();
 
     http.end();
 
-    StaticJsonDocument<2048> json;
+    JsonDocument json;
 
-    auto error = deserializeJson(
-        json,
-        response);
+    DeserializationError error =
+        deserializeJson(
+            json,
+            response);
 
     if (error)
-        return false;
+    {
+        Serial.print(
+            "[AUTH] Invalid JSON: ");
 
-    if (!json["status"])
-        return false;
+        Serial.println(
+            error.c_str());
 
-    String token = json["data"]["token"];
+        return false;
+    }
+
+    bool status =
+        json["status"] | false;
+
+    if (!status)
+    {
+        Serial.println(
+            "[AUTH] Backend rejected authentication.");
+
+        return false;
+    }
+
+    String token =
+        json["data"]["token"] | "";
+
+    if (token.isEmpty())
+    {
+        Serial.println(
+            "[AUTH] No JWT returned.");
+
+        return false;
+    }
 
     _configuration.SetJwt(token);
+
+    Serial.println(
+        "[AUTH] Authentication successful.");
 
     return true;
 }

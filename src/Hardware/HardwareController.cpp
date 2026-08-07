@@ -4,7 +4,9 @@
 #include "MCP23017.h"
 #include "Multiplexer.h"
 #include "PCA9685.h"
-HardwareController::HardwareController(
+#include "Hardware.h"
+
+Hardware::Hardware(
     HardwareManager& manager,
     MCP23017Controller& mcp,
     PCA9685Controller& pwm,
@@ -17,7 +19,7 @@ HardwareController::HardwareController(
 {
 }
 
-bool HardwareController::Initialize()
+bool Hardware::Initialize()
 {
     return
         _mcp.Initialize() &&
@@ -28,7 +30,7 @@ bool HardwareController::Initialize()
 // Lights
 //--------------------------------------------------
 
-void HardwareController::SetLight(
+void Hardware::SetLight(
     int id,
     bool active)
 {

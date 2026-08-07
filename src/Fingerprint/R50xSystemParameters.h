@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-struct R30xSystemParameters
+struct R50xSystemParameters
 {
     //--------------------------------------------------
     // System Configuration

@@ -5,8 +5,8 @@
 #include <ArduinoJson.h>
 #include <Arduino.h>
 #include "../Config/Config.h"
-#include "../Models/HardwareHeartBeatDto.h"
-#include "../Models/NFIDVerifyDto.h"
+#include "../Managers/Heartbeat.h"
+#include "../NFID/NFIDModels.h"
 
 class MessageRouter;
 
