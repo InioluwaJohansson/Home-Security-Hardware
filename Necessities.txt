@@ -123,3 +123,870 @@ This hardware configuration aligns well with the software architecture you've be
 | Window open/close | 12V Worm Gear DC Motor   |
 | Door lock         | 12V N20 Metal Gear Motor |
 | Window lock       | 12V N20 Metal Gear Motor |
+
+
+
+You are working on my ESP32 Home Security firmware project.
+
+Your task is to **fully inspect, diagnose, and fix the entire `src/Hardware` folder** so that the hardware architecture correctly supports the complete Home Security system.
+
+## CRITICAL SCOPE RULE
+
+You may ONLY modify files inside:
+
+```text
+src/Hardware/
+```
+
+Do NOT modify:
+
+* `src/Fingerprint/`
+* `src/NFID/`
+* `src/Access/`
+* `src/Facilities/`
+* `src/MQTT/`
+* `src/Config/`
+* `src/Authentication/`
+* `src/Provisioning/`
+* `src/Storage/`
+* `src/MessageRouter/`
+* `main.cpp`
+* Any other folder outside `src/Hardware/`
+
+Fingerprint and NFID are separate subsystems. They must be considered when designing the hardware architecture, I2C bus usage, UART usage, GPIO allocation, and resource conflicts, but their source files must NOT be changed.
+
+---
+
+# 1. FIRST: INSPECT THE EXISTING HARDWARE FOLDER
+
+Before making any changes, read every file currently present under:
+
+```text
+src/Hardware/
+```
+
+Understand:
+
+* `IHardwareController`
+* `Hardware`
+* `HardwareManager`
+* `HardwareModel`
+* MCP23017 implementation
+* PCA9685 implementation
+* Multiplexer implementation
+* Any GPIO/pin definitions
+* Any hardware endpoint/device mapping
+* Any existing sensor abstractions
+* Any motor/actuator abstractions
+* Any existing controller classes
+
+Do NOT blindly replace the existing architecture.
+
+Preserve useful existing abstractions and naming where possible.
+
+The current project has compiler errors caused by mismatched class names, constructors, declarations, implementations, duplicated constants, incomplete types, and incompatible interfaces. Fix the root architectural problems rather than patching individual compiler errors.
+
+---
+
+# 2. SYSTEM HARDWARE REQUIREMENTS
+
+The ESP32 controls approximately:
+
+```text
+Lights       = 6
+Appliances   = 8
+Doors        = 4
+Windows      = 4
+Cameras      = 3
+External     = 5
+```
+
+The hardware design must support all of these simultaneously.
+
+The design must also account for:
+
+* multiple door sensors
+* multiple window sensors
+* door lock/unlock feedback
+* window lock/unlock feedback
+* door open/closed feedback
+* window open/closed feedback
+* motors/actuators for moving doors
+* motors/actuators for moving windows
+* forward/reverse motor movement
+* motor stopping
+* limit/end-stop sensors
+* multiple external inputs
+* lights
+* appliances
+* camera control/status where applicable
+* PWM devices
+* GPIO expansion
+* I2C devices
+* PN532 NFC reader
+* fingerprint subsystem
+* future expansion
+
+Do NOT assume one GPIO expander is sufficient.
+
+---
+
+# 3. GPIO CAPACITY ANALYSIS
+
+One MCP23017 provides:
+
+```text
+16 digital GPIO
+```
+
+The architecture must support **multiple MCP23017 devices on the same I2C bus**.
+
+Use their configurable I2C addresses to distinguish them.
+
+Do not design the system around a single MCP23017.
+
+The Hardware layer must support something conceptually similar to:
+
+```text
+ESP32
+ │
+ └── I2C
+      ├── MCP23017 #1
+      ├── MCP23017 #2
+      ├── MCP23017 #3
+      ├── MCP23017 #4
+      ├── ...
+      ├── PCA9685
+      └── PN532
+```
+
+The exact number of MCP23017 devices should be determined from the actual I/O requirements and existing project design.
+
+Leave reasonable spare GPIO capacity for expansion.
+
+---
+
+# 4. DOOR HARDWARE
+
+There are 4 doors.
+
+Each door must account for all of the following:
+
+### Outputs
+
+1. Lock actuator control
+2. Unlock actuator control
+
+### Inputs
+
+3. Lock-state sensor
+4. Open/closed sensor
+
+The design must therefore support, per door:
+
+```text
+LOCK_CONTROL
+UNLOCK_CONTROL
+LOCK_SENSOR
+OPEN_SENSOR
+```
+
+Additionally, doors may use motors/actuators to physically move them.
+
+Where a motor is used, support:
+
+```text
+MOTOR_FORWARD
+MOTOR_REVERSE
+MOTOR_STOP
+```
+
+and appropriate limit/end-stop sensors.
+
+Do NOT assume that "lock state" and "open state" are the same sensor.
+
+They are separate pieces of information.
+
+---
+
+# 5. WINDOW HARDWARE
+
+There are 4 windows.
+
+Each window must account for:
+
+### Outputs
+
+1. Lock actuator control
+2. Unlock actuator control
+3. Motor forward/open control
+4. Motor reverse/close control
+
+### Inputs
+
+5. Lock-state sensor
+6. Open/closed/position sensor
+7. Opening limit/end-stop
+8. Closing limit/end-stop
+
+The exact number of sensors should be configurable because some motorized mechanisms may use:
+
+* two physical limit switches
+* one position sensor
+* multiple position sensors
+* magnetic reed sensors
+* hall sensors
+* other digital sensors
+
+The architecture must NOT hardcode the assumption that every facility has exactly one sensor.
+
+---
+
+# 6. MOTOR CONTROL
+
+Doors and windows can use motors to move in opposite directions.
+
+The hardware abstraction must explicitly support bidirectional movement.
+
+For example:
+
+```text
+STOP
+FORWARD / OPEN
+REVERSE / CLOSE
+```
+
+Do NOT directly drive motors from MCP23017 GPIO if the motor requires a dedicated motor driver/H-bridge.
+
+The Hardware folder should abstract the motor driver so that the actual driver can be changed without rewriting the Facility managers.
+
+The architecture should support something conceptually like:
+
+```text
+MotorController
+    ├── Forward
+    ├── Reverse
+    ├── Stop
+    └── IsMoving
+```
+
+The actual implementation must respect the hardware that already exists in the project.
+
+Never drive both directions simultaneously.
+
+Implement appropriate interlocking so:
+
+```text
+FORWARD + REVERSE = NEVER allowed
+```
+
+When changing direction:
+
+```text
+STOP
+↓
+short safe transition
+↓
+new direction
+```
+
+Do not create unsafe simultaneous motor commands.
+
+---
+
+# 7. SENSOR ARCHITECTURE
+
+The hardware system must support **multiple sensors per facility**.
+
+Do NOT create an architecture that assumes:
+
+```cpp
+HardwareDevice.Sensor
+```
+
+is sufficient for every device.
+
+A device may have:
+
+```text
+Primary output
+Secondary output
+Motor forward
+Motor reverse
+Lock output
+Unlock output
+Lock sensor
+Open sensor
+Open limit
+Close limit
+Position sensor
+```
+
+The hardware model must be able to represent these independently.
+
+Prefer a generic endpoint abstraction where appropriate.
+
+For example, conceptually:
+
+```cpp
+HardwareEndpoint
+{
+    controller/chip
+    pin
+    pinMode/type
+    active level
+}
+```
+
+and then devices can have multiple endpoints.
+
+Do not blindly copy this example if the existing architecture already has a better solution.
+
+---
+
+# 8. PIN TYPES
+
+Every physical endpoint must explicitly identify the type of electrical resource it requires.
+
+The Hardware layer should distinguish at minimum between:
+
+```text
+DIGITAL_INPUT
+DIGITAL_OUTPUT
+PWM_OUTPUT
+MOTOR_FORWARD_OUTPUT
+MOTOR_REVERSE_OUTPUT
+LIMIT_INPUT
+LOCK_SENSOR_INPUT
+OPEN_SENSOR_INPUT
+POSITION_SENSOR_INPUT
+```
+
+Where useful, distinguish:
+
+```text
+ESP32_GPIO
+MCP23017_GPIO
+PCA9685_PWM
+MULTIPLEXER_CHANNEL
+```
+
+The exact enum/type design should fit the existing architecture.
+
+The goal is that the system knows **what kind of pin/resource each facility requires**.
+
+---
+
+# 9. FACILITY PIN REQUIREMENT TABLE
+
+Document the required hardware resources inside the Hardware folder.
+
+The implementation must account for at least:
+
+### Lights
+
+6 ×:
+
+```text
+DIGITAL_OUTPUT
+```
+
+If brightness control is supported:
+
+```text
+PWM_OUTPUT
+```
+
+### Appliances
+
+8 ×:
+
+```text
+DIGITAL_OUTPUT
+```
+
+### Doors
+
+4 × each:
+
+```text
+LOCK_CONTROL_OUTPUT
+UNLOCK_CONTROL_OUTPUT
+LOCK_SENSOR_INPUT
+OPEN_SENSOR_INPUT
+MOTOR_FORWARD_OUTPUT
+MOTOR_REVERSE_OUTPUT
+OPEN_LIMIT_INPUT
+CLOSE_LIMIT_INPUT
+```
+
+Only include motor/limit endpoints where the actual hardware design requires them, but the architecture must support them.
+
+### Windows
+
+4 × each:
+
+```text
+LOCK_CONTROL_OUTPUT
+UNLOCK_CONTROL_OUTPUT
+LOCK_SENSOR_INPUT
+OPEN_SENSOR_INPUT
+MOTOR_FORWARD_OUTPUT
+MOTOR_REVERSE_OUTPUT
+OPEN_LIMIT_INPUT
+CLOSE_LIMIT_INPUT
+```
+
+### External inputs
+
+5 ×:
+
+```text
+DIGITAL_INPUT
+```
+
+### Cameras
+
+3 ×:
+
+Determine from the existing Hardware folder whether cameras require actual ESP32 GPIO control or whether they are network devices. Do not invent unnecessary GPIO requirements.
+
+---
+
+# 10. MCP23017 ARCHITECTURE
+
+Implement proper support for multiple MCP23017 chips.
+
+Each MCP23017 must have a unique I2C address.
+
+Do not hardcode all devices to one address.
+
+The architecture should allow:
+
+```text
+MCP23017 #1 → address X
+MCP23017 #2 → address X+1
+MCP23017 #3 → address X+2
+...
+```
+
+The exact addresses must be checked against the existing hardware definitions and I2C devices.
+
+Also consider I2C address conflicts with:
+
+* PN532
+* PCA9685
+* other existing I2C devices
+
+Do not change PN532 code.
+
+Do not change NFID code.
+
+Simply ensure the Hardware layer does not reserve or misuse their resources.
+
+---
+
+# 11. I2C BUS
+
+The project uses the ESP32.
+
+The I2C bus must be shared correctly where possible.
+
+The Hardware layer should NOT create unnecessary independent `Wire` instances for every I2C peripheral.
+
+Respect the existing I2C architecture.
+
+The PN532 is also on I2C.
+
+The NFID implementation already uses I2C.
+
+Therefore:
+
+* do not reserve the PN532 pins for GPIO
+* do not assign MCP23017 GPIOs as if they were ESP32 GPIOs
+* do not create conflicting I2C initialization
+* do not modify NFID
+* do not modify PN532 code outside Hardware
+
+---
+
+# 12. PCA9685
+
+The PCA9685 is a PWM controller, not a GPIO expander.
+
+Use it for actual PWM requirements where appropriate.
+
+Do not treat PCA9685 outputs as ordinary GPIO inputs.
+
+The Hardware layer should clearly distinguish:
+
+```text
+MCP23017 → digital I/O
+PCA9685 → PWM output
+ESP32 → native GPIO / special peripherals
+```
+
+If a motor driver requires PWM speed control, the abstraction should be capable of using PCA9685 where appropriate.
+
+---
+
+# 13. MULTIPLEXER
+
+The project also contains a multiplexer controller.
+
+Inspect its existing implementation before changing anything.
+
+Determine:
+
+* what it is actually multiplexing
+* how many channels it has
+* which facilities use it
+* whether it is an input multiplexer or output multiplexer
+* how its select pins are controlled
+
+Do NOT assume it is interchangeable with MCP23017.
+
+Maintain a clean distinction:
+
+```text
+GPIO expander ≠ multiplexer ≠ PWM controller
+```
+
+---
+
+# 14. HARDWARE MANAGER
+
+`HardwareManager` should be responsible for mapping logical facility IDs to physical hardware resources.
+
+For example:
+
+```text
+Door ID 1
+    Lock output → MCP23017 #X / pin Y
+    Unlock output → MCP23017 #X / pin Y
+    Lock sensor → MCP23017 #X / pin Y
+    Open sensor → MCP23017 #X / pin Y
+    Motor forward → ...
+    Motor reverse → ...
+```
+
+The facility code should not need to know:
+
+```text
+MCP23017 address
+GPIO number
+PCA9685 channel
+multiplexer channel
+```
+
+It should request:
+
+```text
+LockDoor(1)
+UnlockDoor(1)
+OpenDoor(1)
+CloseDoor(1)
+ReadDoorClosed(1)
+ReadDoorLocked(1)
+```
+
+and the Hardware layer resolves the physical resources.
+
+---
+
+# 15. IHardwareController
+
+Inspect the existing `IHardwareController.h`.
+
+Make the interface accurately represent everything the Facility managers need.
+
+It should support at least:
+
+```text
+Lights
+    SetLight
+    SetBrightness
+
+Appliances
+    SetAppliance
+
+Doors
+    LockDoor
+    UnlockDoor
+    OpenDoor
+    CloseDoor
+    ReadDoorClosed
+    ReadDoorLocked
+
+Windows
+    LockWindow
+    UnlockWindow
+    OpenWindow
+    CloseWindow
+    ReadWindowClosed
+    ReadWindowLocked
+
+External
+    ReadExternal
+```
+
+If the existing project requires additional methods, preserve them.
+
+Do not arbitrarily rename methods unless necessary to resolve an actual architectural inconsistency.
+
+Make sure the declarations and implementations match **exactly**.
+
+---
+
+# 16. FIX ALL CURRENT HARDWARE COMPILATION ERRORS
+
+Resolve the existing errors including, but not limited to:
+
+* `HardwareController does not name a type`
+* constructor declaration/definition mismatches
+* incomplete controller types
+* `HardwareDevice` missing fields
+* duplicated `MAX_*` constants
+* incorrect `override` declarations
+* `SetLightBrightness` mismatch
+* `_mcp` not declared
+* `_pwm` not declared
+* `_manager` not declared
+* `_multiplexer` not declared
+* `HardwareOutputs` missing/inconsistent
+* mismatched `ExternalManager`/`ExternalInputManager` naming where it affects Hardware
+* any other errors originating from `src/Hardware`
+
+Do not fix errors by adding random declarations just to satisfy the compiler.
+
+Fix the architecture.
+
+---
+
+# 17. DO NOT DUPLICATE FACILITY LIMITS
+
+The project already has:
+
+```cpp
+MAX_LIGHTS
+MAX_APPLIANCES
+MAX_DOORS
+MAX_WINDOWS
+MAX_CAMERAS
+MAX_EXTERNALS
+```
+
+Do not redefine these in multiple Hardware files.
+
+Use the existing `FacilityLimits.h`.
+
+If a Hardware-specific constant is genuinely needed, give it a Hardware-specific name and keep it inside `src/Hardware`.
+
+---
+
+# 18. SAFETY REQUIREMENTS
+
+The hardware layer must protect against dangerous states.
+
+For motors:
+
+```text
+Forward and Reverse must never be active simultaneously.
+```
+
+For doors/windows:
+
+```text
+Do not continue opening after the open limit is reached.
+Do not continue closing after the close limit is reached.
+Do not continue moving if the relevant sensor indicates the target state.
+```
+
+For locks:
+
+```text
+Lock and Unlock outputs must never be active simultaneously.
+```
+
+For invalid device IDs:
+
+```text
+Never access an array using an unchecked ID.
+```
+
+Validate:
+
+```text
+0 <= id < MAX_...
+```
+
+before accessing hardware arrays.
+
+---
+
+# 19. RESOURCE ALLOCATION
+
+Calculate the total I/O requirement before implementing the final mapping.
+
+Do not simply assume:
+
+```text
+1 MCP23017
+```
+
+is enough.
+
+Determine how many GPIO expanders are needed.
+
+Prefer multiple MCP23017s on the shared I2C bus.
+
+Leave spare channels for future expansion.
+
+Clearly document the allocation in a Hardware configuration/model file.
+
+---
+
+# 20. PRESERVE EXTERNAL ARCHITECTURE
+
+Do not modify the Facility classes to compensate for a broken Hardware implementation.
+
+The existing Facility classes should continue calling the Hardware abstraction.
+
+The Hardware folder must adapt the logical commands to the actual physical resources.
+
+Do not move hardware control logic into:
+
+```text
+Facilities/
+Access/
+Fingerprint/
+NFID/
+```
+
+---
+
+# 21. AFTER IMPLEMENTATION
+
+After making changes:
+
+1. Search every file under `src/Hardware`.
+2. Check every class declaration against its `.cpp`.
+3. Check every constructor declaration against its definition.
+4. Check every `override` against `IHardwareController`.
+5. Check every endpoint field used in `.cpp` actually exists in the model.
+6. Check every `MAX_*` constant has exactly one authoritative definition.
+7. Check every MCP23017 address is unique.
+8. Check I2C resources do not conflict.
+9. Check every motor has forward/reverse interlocking.
+10. Check every sensor has an explicit input type.
+11. Check every output has an explicit output type.
+12. Check invalid IDs cannot access arrays.
+13. Compile the project.
+
+If compilation still fails because of code outside `src/Hardware`, **do not modify that code**. Report the exact external error and explain what Hardware-side dependency is causing it.
+
+---
+
+# 22. IMPORTANT: DO NOT INVENT HARDWARE
+
+If the existing project does not specify the exact:
+
+* motor driver
+* relay module
+* lock actuator
+* window motor
+* door motor
+* sensor model
+* multiplexer model
+* PCA9685 configuration
+
+do not silently invent one.
+
+Build the Hardware abstraction so those physical implementations can be configured cleanly.
+
+Use the existing MCP23017, PCA9685, multiplexer, ESP32, and hardware abstractions already present in the repository.
+
+---
+
+# FINAL DELIVERABLE
+
+When finished, provide:
+
+### A. Files changed
+
+List every file changed under:
+
+```text
+src/Hardware/
+```
+
+### B. Hardware architecture
+
+Explain:
+
+```text
+ESP32
+ ↓
+I2C
+ ├── MCP23017 #1
+ ├── MCP23017 #2
+ ├── ...
+ ├── PCA9685
+ └── PN532
+```
+
+and explain what each controller handles.
+
+### C. Pin/resource allocation
+
+Provide a table containing:
+
+```text
+Facility
+ID/range
+Function
+Pin type
+Controller
+Controller address/channel
+Direction
+Input/Output
+```
+
+Include every:
+
+* light
+* appliance
+* door
+* window
+* external input
+* motor control
+* lock control
+* unlock control
+* lock sensor
+* open/closed sensor
+* limit sensor
+* PWM channel
+
+### D. I/O calculation
+
+Show the total number of required:
+
+```text
+Digital outputs
+Digital inputs
+PWM outputs
+Motor-control outputs
+Sensor inputs
+```
+
+and how many MCP23017s/PCA9685 channels are required.
+
+### E. Compilation
+
+Run the project build after the changes.
+
+Report whether it compiles successfully.
+
+If it doesn't, report only the remaining errors and identify whether they originate inside or outside `src/Hardware`.
+
+**Do not modify anything outside `src/Hardware`.**
