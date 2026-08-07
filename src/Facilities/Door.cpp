@@ -6,6 +6,7 @@ DoorManager::DoorManager(
     : _hardware(hardware)
 {
 }
+
 void DoorManager::Initialize()
 {
     for (int i = 0; i < MAX_DOORS; i++)
@@ -13,6 +14,7 @@ void DoorManager::Initialize()
         _cache[i].DoorId = -1;
         _cache[i].IsLocked = false;
         _cache[i].IsOpen = false;
+        _cache[i].Type = DoorType::Interior;
     }
 }
 
@@ -26,8 +28,11 @@ void DoorManager::Apply(const DoorDeviceState& state)
     auto current = GetCurrentState(state.DoorId);
 
     if (current.IsLocked == state.IsLocked &&
-        current.IsOpen == state.IsOpen)
+        current.IsOpen == state.IsOpen &&
+        current.Type == state.Type)
+    {
         return;
+    }
 
     if (current.IsLocked != state.IsLocked)
     {
@@ -47,7 +52,7 @@ void DoorManager::Apply(const DoorDeviceState& state)
 
     _cache[state.DoorId] = state;
 
-    if(StateChanged)
+    if (StateChanged)
     {
         GenericDeviceUpdateState update;
 
@@ -55,6 +60,7 @@ void DoorManager::Apply(const DoorDeviceState& state)
         update.Type = FacilityType::Door;
         update.IsLocked = state.IsLocked;
         update.IsOpen = state.IsOpen;
+        update.DoorCategory = state.Type;
 
         StateChanged(update);
     }
@@ -67,6 +73,7 @@ void DoorManager::Update(const GenericDeviceUpdateState& update)
     state.DoorId = update.Id;
     state.IsLocked = update.IsLocked;
     state.IsOpen = update.IsOpen;
+    state.Type = update.DoorCategory;
 
     Apply(state);
 }
