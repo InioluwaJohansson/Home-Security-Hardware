@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
+
+#include "ConfigModel.h"
 #include "../Storage/Storage.h"
 #include "../Authentication/JWTAuth.h"
 
@@ -14,7 +16,8 @@ public:
 
     bool Save();
 
-    void SetJwt(const String& token);
+    void SetJwt(
+        const String& token);
 
     const String& GetJwt() const;
 
@@ -27,31 +30,8 @@ public:
 private:
 
     StorageManager storage;
+
     JwtManager jwt;
+
     Config configuration;
-};
-
-struct Config
-{
-    String HardwareId;
-
-    String AuthKey;
-
-    String WifiSSID;
-
-    String WifiPassword;
-
-    String BackendUrl;
-
-    String MqttHost;
-
-    uint16_t MqttPort = 1883;
-
-    String MqttUsername;
-
-    String MqttPassword;
-
-    uint16_t HeartbeatInterval = 30;
-
-    bool IsProvisioned = false;
 };

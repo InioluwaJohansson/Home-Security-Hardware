@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include "../Config/Config.h"
+#include "../Config/ConfigModel.h"
 
 class StorageManager
 {
@@ -8,9 +8,9 @@ public:
 
     bool Begin();
 
-    bool SaveConfiguration(const DeviceConfiguration& configuration);
+    bool SaveConfiguration(const Config& configuration);
 
-    DeviceConfiguration LoadConfiguration();
+    Config LoadConfiguration();
 
     bool IsProvisioned();
 

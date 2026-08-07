@@ -1,7 +1,7 @@
 #pragma once
 
 #include "HardwareModel.h"
-
+#include "../Facilities/FacilityLimits.h"
 class HardwareManager
 {
 public:

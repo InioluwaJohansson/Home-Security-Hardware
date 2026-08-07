@@ -135,9 +135,33 @@ void MessageRouter::HandleCommand(
 {
     GenericDeviceUpdateState update;
 
-    deserializeJson(
-        update,
-        doc.as<JsonObject>());
+    update.Type =
+        static_cast<FacilityType>(
+            doc["FacilityType"] | 0);
+
+    update.Id =
+        doc["Id"] | 0;
+
+    update.BrightnessLevel =
+        doc["BrightnessLevel"] | 0;
+
+    update.IsLocked =
+        doc["IsLocked"] | false;
+
+    update.IsOpen =
+        doc["IsOpen"] | false;
+
+    update.IsTriggered =
+        doc["IsTriggered"] | false;
+
+    update.IsActive =
+        doc["IsActive"] | false;
+
+    update.PowerActive =
+        doc["PowerActive"] | false;
+
+    update.Token =
+        doc["Token"] | "";
 
     _deviceManager.ApplyUpdate(update);
 }

@@ -2,14 +2,14 @@
 
 #include <Arduino.h>
 
-#include "../Models/DeviceModels.h"
+#include "../Facilities/DeviceModels.h"
 #include <functional>
 class LightManager;
 class ApplianceManager;
 class DoorManager;
 class WindowManager;
 class CameraManager;
-class ExternalInputManager;
+class ExternalManager;
 
 class DeviceManager
 {
@@ -22,7 +22,7 @@ public:
         DoorManager& doors,
         WindowManager& windows,
         CameraManager& cameras,
-        ExternalInputManager& externals);
+        ExternalManager& externals);
 
     void ApplyState(
         const GenericDeviceState& state);
@@ -37,7 +37,7 @@ private:
     DoorManager& _doors;
     WindowManager& _windows;
     CameraManager& _cameras;
-    ExternalInputManager& _externals;
+    ExternalManager& _externals;
 
     void OnStateChanged(const GenericDeviceUpdateState& update);
 };

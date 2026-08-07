@@ -29,5 +29,5 @@ const String& ConfigurationManager::GetJwt() const
 
 bool ConfigurationManager::IsAuthenticated() const
 {
-    return jwt.IsAuthenticated();
+    return jwt.HasToken();
 }

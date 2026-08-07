@@ -163,61 +163,33 @@ void HardwareTask(void* parameter)
         {
             fingerprint->Update();
         }
-
-        
-        // NFID / PN532
-
         if(nfid != nullptr)
         {
             nfid->Update();
-        }
-        
-        // SENSOR MONITORING
-        
-
+        }        
         if(sensorMonitoring != nullptr)
         {
             sensorMonitoring->Update();
         }
-
-        
-        // ACCESS
-        
-
         if(access != nullptr)
         {
             access->Update();
         }
 
-        vTaskDelay(
-            pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
-
-// SETUP
-
 void setup()
 {
-    
-    // SERIAL
-    
-
     Serial.begin(9600);
 
     delay(1000);
 
     Serial.println();
-    Serial.println();
-
-    Serial.println(
-        "================================================");
-
-    Serial.println(
-        "              HOME SECURITY");
-
-    Serial.println(
-        "              ESP32 CONTROLLER");
+    Serial.println("================================================");
+    Serial.println("              HOME SECURITY");
+    Serial.println("              ESP32 CONTROLLER");
 
     Serial.println(
         "================================================");

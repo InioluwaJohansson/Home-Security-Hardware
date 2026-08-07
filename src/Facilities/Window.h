@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DeviceModels.h"
+#include "FacilityLimits.h"
 #include "../Hardware/IHardwareController.h"
 #include <functional>
 class WindowManager

@@ -1,6 +1,6 @@
 #include "Auth.h"
-
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
 
 AuthenticationManager::AuthenticationManager(
     ConfigurationManager& configuration)

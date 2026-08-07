@@ -56,7 +56,7 @@ struct ExternalDeviceState
 
 struct GenericDeviceUpdateState
 {
-    FacilityType FacilityType;
+    FacilityType Type;
     int Id;
     int BrightnessLevel;
     bool IsLocked;

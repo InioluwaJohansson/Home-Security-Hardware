@@ -7,7 +7,7 @@ bool StorageManager::Begin()
     return preferences.begin(Namespace, false);
 }
 
-bool StorageManager::SaveConfiguration(const DeviceConfiguration& config)
+bool StorageManager::SaveConfiguration(const Config& config)
 {
     preferences.putString("hardwareId", config.HardwareId);
     preferences.putString("authKey", config.AuthKey);
@@ -22,9 +22,9 @@ bool StorageManager::SaveConfiguration(const DeviceConfiguration& config)
     return true;
 }
 
-DeviceConfiguration StorageManager::LoadConfiguration()
+Config StorageManager::LoadConfiguration()
 {
-    DeviceConfiguration config;
+    Config config;
     config.HardwareId = preferences.getString("hardwareId", "");
     config.AuthKey = preferences.getString("authKey", "");
     config.WifiSSID = preferences.getString("wifiSsid", "");

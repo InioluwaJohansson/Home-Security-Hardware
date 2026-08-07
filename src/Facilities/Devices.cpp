@@ -1,38 +1,33 @@
 #include "DeviceModels.h"
 #include "Devices.h"
+
+#include "Light.h"
+#include "Appliance.h"
+#include "Door.h"
+#include "Window.h"
+#include "Camera.h"
+#include "External.h"
 DeviceManager::DeviceManager(
-
     LightManager& lights,
-
     ApplianceManager& appliances,
-
     DoorManager& doors,
-
     WindowManager& windows,
-
     CameraManager& cameras,
-
-    ExternalInputManager& externals)
-
-:
-
-_lights(lights),
-
-_appliances(appliances),
-
-_doors(doors),
-
-_windows(windows),
-
-_cameras(cameras),
-
-_externals(externals)
-
+    ExternalManager& externals)
+    :
+    _lights(lights),
+    _appliances(appliances),
+    _doors(doors),
+    _windows(windows),
+    _cameras(cameras),
+    _externals(externals)
 {
-    auto callback = [this](const GenericDeviceUpdateState& update)
-    {
-        OnStateChanged(update);
-    };
+    auto callback =
+        [this](
+            const GenericDeviceUpdateState& update)
+        {
+            OnStateChanged(update);
+        };
 
     _lights.StateChanged = callback;
     _appliances.StateChanged = callback;
@@ -76,7 +71,7 @@ void DeviceManager::ApplyState(const GenericDeviceState& state)
 void DeviceManager::ApplyUpdate(
     const GenericDeviceUpdateState& update)
 {
-    switch(update.FacilityType)
+    switch(update.Type)
     {
         case FacilityType::Light:
 
