@@ -2348,7 +2348,7 @@ bool Provisioning::DownloadConfiguration(
         url += "/";
     }
 
-    url += "api/MicroController/Provision";
+    url += "MicroProcessor/GetMicroControllerMTTQConfig";
 
     if (!http.begin(url))
     {
