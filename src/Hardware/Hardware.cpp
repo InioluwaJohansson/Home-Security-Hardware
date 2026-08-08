@@ -51,7 +51,7 @@ namespace
         uint8_t index,
         bool window)
     {
-        const uint8_t mux = window ? MUX_WINDOW : MUX_DOOR;
+        const SensorBus mux = window ? MUX_WINDOW : MUX_DOOR;
         const uint8_t directionChip = window ? MCP_WINDOW_DIRECTION : MCP_DOOR_DIRECTION;
         const uint8_t directionBase = window ? 0 : 1;
         const uint8_t pwmBase = window ? 8 : 0;

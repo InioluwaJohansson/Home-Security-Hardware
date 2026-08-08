@@ -7,14 +7,22 @@
 
 struct DigitalEndpoint
 {
-    uint8_t chip = INVALID_CHANNEL;
-    uint8_t pin = INVALID_CHANNEL;
+    uint8_t chip;
+    uint8_t pin;
+
+    DigitalEndpoint(uint8_t chipValue = INVALID_CHANNEL,
+                    uint8_t pinValue = INVALID_CHANNEL)
+        : chip(chipValue), pin(pinValue) {}
 };
 
 struct PwmEndpoint
 {
-    uint8_t controller = INVALID_CHANNEL;
-    uint8_t channel = INVALID_CHANNEL;
+    uint8_t controller;
+    uint8_t channel;
+
+    PwmEndpoint(uint8_t controllerValue = INVALID_CHANNEL,
+                uint8_t channelValue = INVALID_CHANNEL)
+        : controller(controllerValue), channel(channelValue) {}
 };
 
 enum class SensorBus : uint8_t
@@ -28,21 +36,36 @@ enum class SensorBus : uint8_t
 
 struct SensorEndpoint
 {
-    SensorBus bus = SensorBus::None;
-    uint8_t channel = INVALID_CHANNEL;
-    bool activeHigh = true;
+    SensorBus bus;
+    uint8_t channel;
+    bool activeHigh;
+
+    SensorEndpoint(SensorBus busValue = SensorBus::None,
+                   uint8_t channelValue = INVALID_CHANNEL,
+                   bool activeHighValue = true)
+        : bus(busValue), channel(channelValue), activeHigh(activeHighValue) {}
 };
 
 struct CurrentSensorEndpoint
 {
-    uint8_t adc = INVALID_CHANNEL;
-    uint8_t channel = INVALID_CHANNEL;
+    uint8_t adc;
+    uint8_t channel;
 
     // Voltage produced by the sensor at zero current.
-    float zeroVoltage = 2.5f;
+    float zeroVoltage;
 
     // Sensor sensitivity in volts per ampere.
-    float voltsPerAmp = 0.040f;
+    float voltsPerAmp;
+
+    CurrentSensorEndpoint(
+        uint8_t adcValue = INVALID_CHANNEL,
+        uint8_t channelValue = INVALID_CHANNEL,
+        float zeroVoltageValue = 2.5f,
+        float voltsPerAmpValue = 0.040f)
+        : adc(adcValue),
+          channel(channelValue),
+          zeroVoltage(zeroVoltageValue),
+          voltsPerAmp(voltsPerAmpValue) {}
 };
 
 struct MotorResource
