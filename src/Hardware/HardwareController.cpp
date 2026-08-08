@@ -145,6 +145,45 @@ void HardwareController::SetAppliance(int id, bool active)
     _mcp.DigitalWrite(appliance->primary.chip, appliance->primary.pin, active);
 }
 
+void HardwareController::SetDoorType(int id, DoorType type)
+{
+    auto* door = _manager.GetDoor(id);
+    if (!door)
+        return;
+
+    door->doorType = type;
+
+    switch (type)
+    {
+        case DoorType::Exterior:
+            door->motorized.motor.maxSpeed = 100;
+            door->motorized.motor.acceleration = 30;
+            door->motorized.motor.deceleration = 30;
+            break;
+
+        case DoorType::Interior:
+        case DoorType::Gate:
+        default:
+            door->motorized.motor.maxSpeed = 65;
+            door->motorized.motor.acceleration = 25;
+            door->motorized.motor.deceleration = 25;
+            break;
+    }
+}
+
+void HardwareController::StartLock(
+    MotorizedFacilityHardware& resource,
+    LockRuntime& runtime,
+    bool locking)
+{
+    runtime.active = true;
+    runtime.locking = locking;
+    runtime.pendingAfterClose = false;
+    runtime.startedAt = millis();
+
+    SetLock(resource, locking);
+}
+
 void HardwareController::SetCamera(int id, bool active)
 {
     auto* camera = _manager.GetCamera(id);
@@ -205,11 +244,9 @@ void HardwareController::UpdateMotor(
         return;
 
     const uint32_t elapsed = millis() - runtime.startedAt;
-
     const bool targetReached = runtime.opening
         ? ReadSensor(resource.motor.openSensor)
         : ReadSensor(resource.motor.closeSensor);
-
     const float current = std::fabs(ReadCurrent(resource.motor.current));
 
     if (targetReached ||
@@ -219,17 +256,61 @@ void HardwareController::UpdateMotor(
         StopMotor(resource);
         runtime.active = false;
         runtime.currentSpeed = 0;
+
+        // Only a confirmed closed Hall sensor may transition a queued
+        // close-then-lock request into lock motion. Current-limit trips and
+        // timeouts deliberately leave the lock untouched.
+        if (targetReached && !runtime.opening)
+        {
+            for (uint8_t i = 0; i < MAX_DOORS; ++i)
+            {
+                auto* door = _manager.GetDoorSlot(i);
+                if (door && &resource == &door->motorized &&
+                    _doorLocks[i].pendingAfterClose)
+                {
+                    StartLock(resource, _doorLocks[i], true);
+                    return;
+                }
+            }
+
+            for (uint8_t i = 0; i < MAX_WINDOWS; ++i)
+            {
+                auto* window = _manager.GetWindowSlot(i);
+                if (window && &resource == &window->motorized &&
+                    _windowLocks[i].pendingAfterClose)
+                {
+                    StartLock(resource, _windowLocks[i], true);
+                    return;
+                }
+            }
+        }
+
         return;
     }
 
-    // Non-blocking acceleration ramp. The hardware task should call Update()
-    // at a short interval (for example 10-20 ms).
-    if (runtime.currentSpeed < resource.motor.maxSpeed)
+    // Accelerate until the configured maximum. Begin a simple non-blocking
+    // deceleration near the configured travel-time limit so the mechanism is
+    // not commanded at full speed all the way to a Hall end-stop.
+    const uint16_t decelStart = resource.motor.maxTravelTime > 2000
+        ? resource.motor.maxTravelTime - 1500
+        : resource.motor.maxTravelTime / 2;
+
+    if (elapsed >= decelStart)
     {
-        const uint8_t step =
-            resource.motor.acceleration / 10 > 0
-                ? resource.motor.acceleration / 10
-                : 1;
+        runtime.decelerating = true;
+        const uint8_t step = resource.motor.deceleration / 10 > 0
+            ? resource.motor.deceleration / 10
+            : 1;
+
+        runtime.currentSpeed = runtime.currentSpeed > step
+            ? runtime.currentSpeed - step
+            : 1;
+    }
+    else if (runtime.currentSpeed < resource.motor.maxSpeed)
+    {
+        const uint8_t step = resource.motor.acceleration / 10 > 0
+            ? resource.motor.acceleration / 10
+            : 1;
 
         const uint16_t nextSpeed =
             static_cast<uint16_t>(runtime.currentSpeed) + step;
@@ -238,9 +319,9 @@ void HardwareController::UpdateMotor(
             nextSpeed > resource.motor.maxSpeed
                 ? resource.motor.maxSpeed
                 : static_cast<uint8_t>(nextSpeed);
-
-        SetMotor(resource, runtime.opening, runtime.currentSpeed);
     }
+
+    SetMotor(resource, runtime.opening, runtime.currentSpeed);
 }
 
 void HardwareController::UpdateLock(
@@ -264,111 +345,118 @@ void HardwareController::UpdateLock(
             resource.lock.pwm.channel);
 
         runtime.active = false;
+        runtime.pendingAfterClose = false;
     }
 }
 
 void HardwareController::LockDoor(int id)
 {
     auto* door = _manager.GetDoor(id);
-    if (!door) return;
+    if (!door || id < 0 || id >= MAX_DOORS) return;
 
     if (!ReadDoorClosed(id))
     {
-        Serial.printf("[HARDWARE] Door %d cannot lock while open\n", id);
+        _doorLocks[id].pendingAfterClose = true;
+        CloseDoor(id);
         return;
     }
 
-    SetLock(door->motorized, true);
-    _doorLocks[id].active = true;
-    _doorLocks[id].locking = true;
-    _doorLocks[id].startedAt = millis();
+    StartLock(door->motorized, _doorLocks[id], true);
 }
 
 void HardwareController::UnlockDoor(int id)
 {
     auto* door = _manager.GetDoor(id);
-    if (!door) return;
-    SetLock(door->motorized, false);
-    _doorLocks[id].active = true;
-    _doorLocks[id].locking = false;
-    _doorLocks[id].startedAt = millis();
+    if (!door || id < 0 || id >= MAX_DOORS) return;
+
+    _doorLocks[id].pendingAfterClose = false;
+    StartLock(door->motorized, _doorLocks[id], false);
 }
 
 void HardwareController::OpenDoor(int id)
 {
     auto* door = _manager.GetDoor(id);
-    if (!door) return;
+    if (!door || id < 0 || id >= MAX_DOORS) return;
 
     if (ReadDoorLockedSensor(id)) return;
-    SetMotor(door->motorized, true, 0);
+
+    _doorLocks[id].pendingAfterClose = false;
+    StopMotor(door->motorized);
+    SetMotor(door->motorized, true, 1);
     _doorMotion[id].active = true;
     _doorMotion[id].opening = true;
     _doorMotion[id].startedAt = millis();
-    _doorMotion[id].currentSpeed = 0;
+    _doorMotion[id].currentSpeed = 1;
+    _doorMotion[id].decelerating = false;
 }
 
 void HardwareController::CloseDoor(int id)
 {
     auto* door = _manager.GetDoor(id);
-    if (!door) return;
+    if (!door || id < 0 || id >= MAX_DOORS) return;
 
-    SetMotor(door->motorized, false, 0);
+    StopMotor(door->motorized);
+    SetMotor(door->motorized, false, 1);
     _doorMotion[id].active = true;
     _doorMotion[id].opening = false;
     _doorMotion[id].startedAt = millis();
-    _doorMotion[id].currentSpeed = 0;
+    _doorMotion[id].currentSpeed = 1;
+    _doorMotion[id].decelerating = false;
 }
 
 void HardwareController::LockWindow(int id)
 {
     auto* window = _manager.GetWindow(id);
-    if (!window) return;
+    if (!window || id < 0 || id >= MAX_WINDOWS) return;
 
     if (!ReadWindowClosed(id))
     {
-        Serial.printf("[HARDWARE] Window %d cannot lock while open\n", id);
+        _windowLocks[id].pendingAfterClose = true;
+        CloseWindow(id);
         return;
     }
 
-    SetLock(window->motorized, true);
-    _windowLocks[id].active = true;
-    _windowLocks[id].locking = true;
-    _windowLocks[id].startedAt = millis();
+    StartLock(window->motorized, _windowLocks[id], true);
 }
 
 void HardwareController::UnlockWindow(int id)
 {
     auto* window = _manager.GetWindow(id);
-    if (!window) return;
-    SetLock(window->motorized, false);
-    _windowLocks[id].active = true;
-    _windowLocks[id].locking = false;
-    _windowLocks[id].startedAt = millis();
+    if (!window || id < 0 || id >= MAX_WINDOWS) return;
+
+    _windowLocks[id].pendingAfterClose = false;
+    StartLock(window->motorized, _windowLocks[id], false);
 }
 
 void HardwareController::OpenWindow(int id)
 {
     auto* window = _manager.GetWindow(id);
-    if (!window) return;
+    if (!window || id < 0 || id >= MAX_WINDOWS) return;
 
     if (ReadWindowLockedSensor(id)) return;
-    SetMotor(window->motorized, true, 0);
+
+    _windowLocks[id].pendingAfterClose = false;
+    StopMotor(window->motorized);
+    SetMotor(window->motorized, true, 1);
     _windowMotion[id].active = true;
     _windowMotion[id].opening = true;
     _windowMotion[id].startedAt = millis();
-    _windowMotion[id].currentSpeed = 0;
+    _windowMotion[id].currentSpeed = 1;
+    _windowMotion[id].decelerating = false;
 }
 
 void HardwareController::CloseWindow(int id)
 {
     auto* window = _manager.GetWindow(id);
-    if (!window) return;
+    if (!window || id < 0 || id >= MAX_WINDOWS) return;
 
-    SetMotor(window->motorized, false, 0);
+    StopMotor(window->motorized);
+    SetMotor(window->motorized, false, 1);
     _windowMotion[id].active = true;
     _windowMotion[id].opening = false;
     _windowMotion[id].startedAt = millis();
-    _windowMotion[id].currentSpeed = 0;
+    _windowMotion[id].currentSpeed = 1;
+    _windowMotion[id].decelerating = false;
 }
 
 bool HardwareController::ReadDoorClosed(int id)

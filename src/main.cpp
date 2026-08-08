@@ -35,7 +35,7 @@ Provisioning* provisioning = nullptr;
 MqttManager* mqtt = nullptr;
 MessageRouter* messageRouter = nullptr;
 
-Access* access = nullptr;
+Access* securityAccess = nullptr;
 Fingerprint* fingerprint = nullptr;
 NFID* nfid = nullptr;
 Heartbeat* heartbeat = nullptr;
@@ -93,8 +93,8 @@ void HardwareTask(void*)
         if (sensorController)
             sensorController->Update();
 
-        if (access)
-            access->Update();
+        if (securityAccess)
+            securityAccess->Update();
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }
@@ -135,7 +135,7 @@ static bool InitializeApplication()
         *cameras,
         *externals);
 
-    access = new Access(*doors);
+    securityAccess = new Access(*doors);
 
     fingerprint = new Fingerprint(
         FingerprintSerial,
@@ -161,13 +161,13 @@ static bool InitializeApplication()
     messageRouter = new MessageRouter(
         configuration,
         *deviceManager,
-        *access,
+        *securityAccess,
         *fingerprint,
         *nfid);
 
     mqtt->SetMessageRouter(*messageRouter);
 
-    if (!access->Initialize())
+    if (!securityAccess->Initialize())
         return false;
 
     if (!fingerprint->Initialize())

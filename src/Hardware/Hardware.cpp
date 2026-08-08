@@ -58,7 +58,14 @@ namespace
         const uint8_t lockPwmBase = window ? 12 : 4;
         const uint8_t adcMotor = window ? ADC_WINDOW_MOTOR : ADC_DOOR_MOTOR;
         const uint8_t adcLock = window ? ADC_WINDOW_LOCK : ADC_DOOR_LOCK;
-        const uint8_t sensorBase = 0;
+
+        // Each motorized facility gets exactly three position inputs:
+        //   channel 0 + index*3 = fully open Hall sensor
+        //   channel 1 + index*3 = fully closed Hall sensor
+        //   channel 2 + index*3 = lock/unlock position sensor
+        // Four facilities therefore use channels 0..11, which is within the
+        // 16 channels available on a single 74HC4067.
+        const uint8_t sensorBase = static_cast<uint8_t>(index * 3);
 
         device.motorized.motor.pwm = Pwm(PCA_MOTOR, pwmBase + index);
         device.motorized.motor.direction = Digital(directionChip, directionBase + index);
@@ -69,9 +76,10 @@ namespace
 
         device.motorized.motor.encoderA = Sensor(SensorBus::McuGpio, encoderBase);
         device.motorized.motor.encoderB = Sensor(SensorBus::McuGpio, encoderBase + 1);
-        device.motorized.motor.openSensor = Sensor(mux, sensorBase + (index * 5) + 2);
-        device.motorized.motor.closeSensor = Sensor(mux, sensorBase + (index * 5) + 3);
-        device.motorized.lock.positionSensor = Sensor(mux, sensorBase + (index * 5) + 4);
+
+        device.motorized.motor.openSensor = Sensor(mux, sensorBase);
+        device.motorized.motor.closeSensor = Sensor(mux, sensorBase + 1);
+        device.motorized.lock.positionSensor = Sensor(mux, sensorBase + 2);
 
         device.motorized.motor.current = Current(adcMotor, index);
         device.motorized.lock.current = Current(adcLock, index);
@@ -79,7 +87,9 @@ namespace
         device.motorized.lock.pwm = Pwm(PCA_MOTOR, lockPwmBase + index);
         device.motorized.lock.direction = Digital(directionChip, (window ? 4 : 5) + index);
 
-        device.motorized.motor.maxSpeed = 100;
+        // Windows and interior/gate doors use a moderate default profile.
+        // Exterior doors are raised to a faster profile when DoorType is set.
+        device.motorized.motor.maxSpeed = window ? 65 : 65;
         device.motorized.motor.acceleration = window ? 20 : 25;
         device.motorized.motor.deceleration = window ? 20 : 25;
         device.motorized.motor.maxCurrent = window ? 5000 : 10000;
@@ -139,6 +149,7 @@ void HardwareManager::ConfigureFixedResources()
         _doors[i].id = i;
         _doors[i].type = FacilityType::Door;
         _doors[i].enabled = true;
+        _doors[i].doorType = DoorType::Interior;
         ConfigureMotor(_doors[i], i, false);
     }
 
@@ -151,14 +162,14 @@ void HardwareManager::ConfigureFixedResources()
         ConfigureMotor(_windows[i], i, true);
     }
 
-    // External outputs are MCP #2 pins 8-12. Their inputs are MUX #2 channels 8-12.
+    // External outputs are MCP #2 pins 8-12. External sensor inputs use MUX #2 channels 0-4.
     for (uint8_t i = 0; i < MAX_EXTERNALS; ++i)
     {
         _externals[i].id = i;
         _externals[i].type = FacilityType::External;
         _externals[i].enabled = true;
         _externals[i].primary = Digital(MCP_WINDOW_DIRECTION, 8 + i);
-        _externals[i].sensor = Sensor(MUX_EXTERNAL, 8 + i);
+        _externals[i].sensor = Sensor(MUX_EXTERNAL, i);
     }
 }
 
@@ -177,8 +188,9 @@ HardwareDevice* HardwareManager::Register(
             return &device;
     }
 
-    for (auto& device : devices)
+    if (static_cast<size_t>(id) < N)
     {
+        auto& device = devices[id];
         if (!device.enabled)
         {
             device.id = id;

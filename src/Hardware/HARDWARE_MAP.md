@@ -17,16 +17,15 @@ This map is the physical resource allocation used by the Hardware layer.
 | 36 | External 4067 SIG | Input-only |
 | 16 | Fingerprint RX | UART2 |
 | 17 | Fingerprint TX | UART2 |
-| 18 | NFID SPI SCK | SPI |
-| 19 | NFID SPI MISO | SPI |
-| 23 | NFID SPI MOSI | SPI |
-| 5 | NFID SPI SS | SPI |
-| 4 | NFID reset | Digital output |
 | 10 | Reset button | Digital input |
+
+PN532/NFID is **I2C**, not SPI. It shares GPIO 21/22 with the MCP23017,
+PCA9685 and ADS1115 devices. The old RFID SPI allocation is intentionally
+removed because this project uses the PN532 I2C constructor.
 
 ## MCP23017
 
-Four expanders are used.
+Four expanders are used at `0x20`-`0x23`.
 
 - `0x20`: lights, appliances, cameras 0-1
 - `0x21`: camera 2, door movement direction, door lock direction
@@ -60,11 +59,15 @@ Four expanders are used.
 - GP0-GP7: door encoder A/B, doors 0-3
 - GP8-GP15: window encoder A/B, windows 0-3
 
+Encoder inputs are not multiplexed. They are reserved for low-rate position
+feedback and diagnostics; the actual safety stop remains the open/close Hall
+sensor, lock-position sensor, current limit, and maximum travel time.
+
 ## PCA9685
 
 Two controllers are used.
 
-### `0x40` — motors
+### `0x40` — motors and locks
 
 - CH0-CH3: door movement PWM 0-3
 - CH4-CH7: door lock PWM 0-3
@@ -82,18 +85,30 @@ Three multiplexers share S0-S3 but have independent SIG inputs.
 
 ### Door multiplexer
 
-12 used channels: 4 doors × (open Hall, close Hall, lock sensor). Channels 0-1, 5-6, 10-11, and 15 are reserved for additional sensors.
+Each door uses three channels:
+
+- `door * 3 + 0`: fully-open Hall sensor
+- `door * 3 + 1`: fully-closed Hall sensor
+- `door * 3 + 2`: lock/unlock position sensor
+
+Four doors use channels 0-11.
 
 ### Window multiplexer
 
-12 used channels: 4 windows × (open Hall, close Hall, lock sensor). Channels 0-1, 5-6, 10-11, and 15 are reserved for additional sensors.
+Each window uses three channels:
+
+- `window * 3 + 0`: fully-open Hall sensor
+- `window * 3 + 1`: fully-closed Hall sensor
+- `window * 3 + 2`: lock/unlock position sensor
+
+Four windows use channels 0-11.
 
 ### External multiplexer
 
-- CH8-CH12: 5 external inputs
-- CH0-CH7 and CH13-CH15: reserved
+- CH0-CH4: five external inputs
+- CH5-CH15: reserved
 
-Encoder signals are **not** multiplexed because they are higher-frequency signals.
+No facility attempts to access a channel above 15.
 
 ## ADS1115
 
@@ -104,4 +119,5 @@ Four ADCs are used at `0x48`-`0x4B`.
 - `0x4A`: door lock current, channels 0-3
 - `0x4B`: window lock current, channels 0-3
 
-Current sensor zero voltage and sensitivity are hardware-calibration values and must be changed to match the actual current sensor selected for the motors.
+Current sensor zero voltage and sensitivity remain calibration values and must
+be matched to the actual Hall current sensor used with the motor driver.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "../Facilities/DeviceModels.h"
 
 class IHardwareController
 {
@@ -14,6 +15,7 @@ public:
     virtual void SetAppliance(int id, bool active) = 0;
     virtual void SetExternal(int id, bool active) = 0;
     virtual void SetCamera(int id, bool active) = 0;
+    virtual void SetDoorType(int id, DoorType type) = 0;
 
     virtual void LockDoor(int id) = 0;
     virtual void UnlockDoor(int id) = 0;

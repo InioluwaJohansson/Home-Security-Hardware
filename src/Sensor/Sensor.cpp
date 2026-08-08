@@ -1,5 +1,5 @@
 #include "Sensor.h"
-
+#include "../Facilities/FacilityLimits.h"
 SensorController::SensorController(
     IHardwareController& hardware,
     ConfigurationManager& configuration,
@@ -61,6 +61,14 @@ void SensorController::UpdateDoors()
         state.DoorId = i;
         state.IsOpen = !closed;
         state.IsLocked = locked;
+        // DoorType is configuration, not a physical sensor value. Preserve
+        // the cached backend profile while updating only physical state.
+        if (state.Type != DoorType::Interior &&
+            state.Type != DoorType::Exterior &&
+            state.Type != DoorType::Gate)
+        {
+            state.Type = DoorType::Interior;
+        }
 
         _cache.UpdateDoor(state);
 

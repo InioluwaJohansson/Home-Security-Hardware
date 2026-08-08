@@ -26,6 +26,7 @@ public:
     void SetAppliance(int id, bool active) override;
     void SetExternal(int id, bool active) override;
     void SetCamera(int id, bool active) override;
+    void SetDoorType(int id, DoorType type) override;
 
     void LockDoor(int id) override;
     void UnlockDoor(int id) override;
@@ -63,12 +64,14 @@ private:
         bool opening = false;
         uint32_t startedAt = 0;
         uint8_t currentSpeed = 0;
+        bool decelerating = false;
     };
 
     struct LockRuntime
     {
         bool active = false;
         bool locking = false;
+        bool pendingAfterClose = false;
         uint32_t startedAt = 0;
     };
 
@@ -102,6 +105,9 @@ private:
     void UpdateLock(
         MotorizedFacilityHardware& resource,
         LockRuntime& runtime);
+
+    uint8_t MaxSpeedForDoor(const HardwareDevice& door) const;
+    void StartLock(MotorizedFacilityHardware& resource, LockRuntime& runtime, bool locking);
 
     bool ReadSensor(const SensorEndpoint& sensor);
     float ReadCurrent(const CurrentSensorEndpoint& sensor);

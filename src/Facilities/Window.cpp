@@ -35,14 +35,8 @@ void WindowManager::Apply(const WindowDeviceState& state)
     {
         if (state.IsLocked)
         {
-            if (current.IsOpen)
-            {
-                _hardware.CloseWindow(state.WindowId);
-            }
-            else
-            {
-                _hardware.LockWindow(state.WindowId);
-            }
+            // HardwareController performs close-then-lock when necessary.
+            _hardware.LockWindow(state.WindowId);
         }
         else
         {
@@ -54,7 +48,7 @@ void WindowManager::Apply(const WindowDeviceState& state)
     {
         if (state.IsOpen)
         {
-            if (!current.IsLocked)
+            if (!current.IsLocked && !state.IsLocked)
                 _hardware.OpenWindow(state.WindowId);
         }
         else

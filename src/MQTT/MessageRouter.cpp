@@ -25,7 +25,7 @@ void MessageRouter::Route(
     const String& topic,
     const String& payload)
 {
-    StaticJsonDocument<4096> doc;
+    JsonDocument doc;
 
     auto error = deserializeJson(doc, payload);
 
@@ -109,23 +109,134 @@ void MessageRouter::HandleSync(
 {
     GenericDeviceState state;
 
-    deserializeJson(
-        state,
-        doc.as<GenericDeviceState>());
-        // GenericDeviceState state = doc.as<GenericDeviceState>();
-    String token = doc["token"] | "";
-
-    if(token.isEmpty())
+    // ArduinoJson 7 does not automatically deserialize std::vector-based
+    // application models. Map each array explicitly.
+    auto first = [](JsonVariantConst root,
+                    const char* pascal,
+                    const char* camel) -> JsonVariantConst
     {
-        Serial.println("Authentication response contains no token");
-        return;
+        JsonVariantConst value = root[pascal];
+        if (!value.isNull())
+            return value;
+
+        return root[camel];
+    };
+
+    JsonArrayConst appliances =
+        first(doc, "ApplianceDeviceStates", "applianceDeviceStates");
+    for (JsonObjectConst item : appliances)
+    {
+        ApplianceDeviceState value;
+        value.ApplianceId =
+            first(item, "ApplianceId", "applianceId") | -1;
+        value.IsActive =
+            first(item, "IsActive", "isActive") | false;
+        value.ApplianceType =
+            first(item, "ApplianceType", "applianceType") | 0;
+
+        state.ApplianceDeviceStates.push_back(value);
     }
 
-    _configuration.SetJwt(token);
+    JsonArrayConst lights =
+        first(doc, "LightDeviceStates", "lightDeviceStates");
+    for (JsonObjectConst item : lights)
+    {
+        LightDeviceState value;
+        value.LightId =
+            first(item, "LightId", "lightId") | -1;
+        value.BrightnessLevel =
+            first(item, "BrightnessLevel", "brightnessLevel") | 0;
+        value.IsActive =
+            first(item, "IsActive", "isActive") | false;
 
-    _configuration.Save();
+        state.LightDeviceStates.push_back(value);
+    }
 
-    Serial.println("JWT Saved");
+    JsonArrayConst cameras =
+        first(doc, "CameraDeviceStates", "cameraDeviceStates");
+    for (JsonObjectConst item : cameras)
+    {
+        CameraDeviceState value;
+        value.CameraId =
+            first(item, "CameraId", "cameraId") | -1;
+        value.IsActive =
+            first(item, "IsActive", "isActive") | false;
+
+        state.CameraDeviceStates.push_back(value);
+    }
+
+    JsonArrayConst windows =
+        first(doc, "WindowDeviceStates", "windowDeviceStates");
+    for (JsonObjectConst item : windows)
+    {
+        WindowDeviceState value;
+        value.WindowId =
+            first(item, "WindowId", "windowId") | -1;
+        value.IsLocked =
+            first(item, "IsLocked", "isLocked") | false;
+        value.IsOpen =
+            first(item, "IsOpen", "isOpen") | false;
+
+        state.WindowDeviceStates.push_back(value);
+    }
+
+    JsonArrayConst doors =
+        first(doc, "DoorDeviceStates", "doorDeviceStates");
+    for (JsonObjectConst item : doors)
+    {
+        DoorDeviceState value;
+        value.DoorId =
+            first(item, "DoorId", "doorId") | -1;
+        value.IsLocked =
+            first(item, "IsLocked", "isLocked") | false;
+        value.IsOpen =
+            first(item, "IsOpen", "isOpen") | false;
+
+        const int type =
+            first(item, "DoorType", "doorType") |
+            static_cast<int>(DoorType::Interior);
+
+        if (type >= static_cast<int>(DoorType::Interior) &&
+            type <= static_cast<int>(DoorType::Gate))
+        {
+            value.Type = static_cast<DoorType>(type);
+        }
+        else
+        {
+            value.Type = DoorType::Interior;
+        }
+
+        state.DoorDeviceStates.push_back(value);
+    }
+
+    JsonArrayConst externals =
+        first(doc, "ExternalDeviceStates", "externalDeviceStates");
+    for (JsonObjectConst item : externals)
+    {
+        ExternalDeviceState value;
+        value.ExternalId =
+            first(item, "ExternalId", "externalId") | -1;
+        value.IsActive =
+            first(item, "IsActive", "isActive") | false;
+        value.IsTriggered =
+            first(item, "IsTriggered", "isTriggered") | false;
+
+        state.ExternalDeviceStates.push_back(value);
+    }
+
+    state.Timestamp =
+        first(doc, "Timestamp", "timestamp") | 0UL;
+    state.Token =
+        first(doc, "Token", "token") | "";
+
+    // A sync message is still valid when it does not contain a JWT.
+    // Only update authentication state when a token was actually supplied.
+    if (!state.Token.isEmpty())
+    {
+        _configuration.SetJwt(state.Token);
+        _configuration.Save();
+        Serial.println("JWT Saved");
+    }
 
     _deviceManager.ApplyState(state);
 }

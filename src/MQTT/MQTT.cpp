@@ -1,6 +1,6 @@
 #include "MQTT.h"
 #include <Arduino.h>
-#include "../Router/MessageRouter.h"
+#include "MessageRouter.h"
 
 MessageRouter* MqttManager::_router = nullptr;
 
@@ -53,7 +53,7 @@ bool MqttManager::Reconnect()
 
     SubscribeTopics();
 
-    StaticJsonDocument<128> doc;
+    JsonDocument doc;
 
     doc["online"] = true;
 
@@ -190,7 +190,7 @@ void MqttManager::Callback(
 void MqttManager::PublishHeartbeat(
     const HardwareHeartBeatDto& dto)
 {
-    StaticJsonDocument<256> doc;
+    JsonDocument doc;
 
     doc["Token"] = dto.Token;
 
@@ -210,7 +210,7 @@ void MqttManager::PublishHeartbeat(
 void MqttManager::PublishNFIDVerify(
     const NFIDVerifyDto& dto)
 {
-    StaticJsonDocument<256> doc;
+    JsonDocument doc;
 
     doc["Token"] =
         dto.Token;

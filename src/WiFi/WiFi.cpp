@@ -1,6 +1,6 @@
 #include "WiFi.h"
 
-WiFiManager::WiFi(
+WiFiManager::WiFiManager(
     ConfigurationManager& configuration)
     :
     _configuration(configuration)

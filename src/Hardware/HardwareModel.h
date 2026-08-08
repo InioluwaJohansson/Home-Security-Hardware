@@ -76,9 +76,9 @@ struct MotorResource
     // Mechanical installation orientation.
     bool openDirection = true;
 
-    // Encoder inputs are intentionally represented independently from the
-    // 74HC4067 sensor buses. High-frequency encoder signals must not be
-    // multiplexed because doing so would lose pulses.
+    // Encoder inputs are kept off the 74HC4067 buses. They are reserved for
+    // position feedback and are not used as the primary safety stop. Hall
+    // end-stops, current limits, and travel time remain the safety limits.
     SensorEndpoint encoderA;
     SensorEndpoint encoderB;
     SensorEndpoint openSensor;
@@ -119,6 +119,10 @@ struct HardwareDevice
     int id = -1;
     FacilityType type = FacilityType::Light;
     bool enabled = false;
+
+    // Backend-selected mechanical profile. Only doors use this field;
+    // windows use the moderate-speed window profile.
+    DoorType doorType = DoorType::Interior;
 
     // Simple facility resources.
     DigitalEndpoint primary;

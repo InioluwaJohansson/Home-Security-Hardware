@@ -32,8 +32,9 @@ void DoorManager::Apply(const DoorDeviceState& state)
 
     DoorDeviceState current = _cache[state.DoorId];
 
-    // Keep the backend's door type as part of the local hardware state.
-    _cache[state.DoorId].Type = state.Type;
+    // Keep the backend door profile in the hardware map so movement speed
+    // is selected locally: Exterior is fast; Interior/Gate are moderate.
+    _hardware.SetDoorType(state.DoorId, state.Type);
 
     // A lock command must never attempt to lock an open door.
     // Close the door first; the hardware layer will only energize the
@@ -42,15 +43,8 @@ void DoorManager::Apply(const DoorDeviceState& state)
     {
         if (state.IsLocked)
         {
-            if (current.IsOpen)
-            {
-                _hardware.CloseDoor(state.DoorId);
-                _cache[state.DoorId].IsOpen = true;
-            }
-            else
-            {
-                _hardware.LockDoor(state.DoorId);
-            }
+            // HardwareController performs close-then-lock when necessary.
+            _hardware.LockDoor(state.DoorId);
         }
         else
         {
@@ -63,7 +57,7 @@ void DoorManager::Apply(const DoorDeviceState& state)
         if (state.IsOpen)
         {
             // Opening an already locked door is not allowed.
-            if (!current.IsLocked)
+            if (!current.IsLocked && !state.IsLocked)
                 _hardware.OpenDoor(state.DoorId);
         }
         else

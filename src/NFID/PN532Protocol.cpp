@@ -1,4 +1,5 @@
 #include "PN532Protocol.h"
+#include "../Hardware/Pins.h"
 #include <cstring>
 
 constexpr char PN532Protocol::Signature[];
@@ -6,7 +7,7 @@ constexpr char PN532Protocol::Signature[];
 PN532Protocol::PN532Protocol(TwoWire& wire)
     : _wire(wire)
 {
-    _nfc = new Adafruit_PN532(_wire);
+    _nfc = new Adafruit_PN532(Pins::PN532_IRQ, Pins::PN532_RESET, &_wire);
 }
 
 bool PN532Protocol::Initialize()
@@ -56,7 +57,10 @@ bool PN532Protocol::WritePage(uint8_t page, const uint8_t data[4])
     if (!_nfc || !data)
         return false;
 
-    return _nfc->ntag2xx_WritePage(page, data);
+    uint8_t writable[4];
+    memcpy(writable, data, sizeof(writable));
+
+    return _nfc->ntag2xx_WritePage(page, writable);
 }
 
 bool PN532Protocol::ReadSignature()
