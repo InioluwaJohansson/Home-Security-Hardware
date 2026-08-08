@@ -1,46 +1,33 @@
 #include "PCA9685.h"
 
-#include "Pins.h"
-
 bool PCA9685Controller::Initialize()
 {
-    Wire.begin(Pins::SDA, Pins::SCL);
-
-    _driver.begin();
-
-    _driver.setPWMFreq(1000);
-
-    for(uint8_t i = 0; i < 16; i++)
+    for (uint8_t i = 0; i < CONTROLLER_COUNT; ++i)
     {
-        _driver.setPWM(i, 0, 0);
+        if (!_drivers[i].begin()) return false;
+        _drivers[i].setPWMFreq(1000);
+        for (uint8_t channel = 0; channel < 16; ++channel)
+            _drivers[i].setPWM(channel, 0, 0);
     }
-
     return true;
 }
 
-void PCA9685Controller::SetBrightness(
-    uint8_t channel,
-    uint8_t brightness)
+void PCA9685Controller::SetDuty(uint8_t controller, uint8_t channel, uint16_t duty)
 {
-    if(channel >= 16)
-        return;
-
-    uint16_t pwm =
-        map(brightness,
-            0,
-            100,
-            0,
-            4095);
-
-    _driver.setPWM(channel, 0, pwm);
+    if (controller >= CONTROLLER_COUNT || channel >= 16) return;
+    if (duty > 4095) duty = 4095;
+    _drivers[controller].setPWM(channel, 0, duty);
 }
 
-void PCA9685Controller::TurnOn(uint8_t channel)
+void PCA9685Controller::SetPercent(uint8_t controller, uint8_t channel, uint8_t percent)
 {
-    SetBrightness(channel, 100);
+    if (percent > 100) percent = 100;
+    SetDuty(controller, channel, static_cast<uint16_t>((4095UL * percent) / 100UL));
 }
 
-void PCA9685Controller::TurnOff(uint8_t channel)
+void PCA9685Controller::TurnOff(uint8_t controller, uint8_t channel)
 {
-    SetBrightness(channel, 0);
+    SetDuty(controller, channel, 0);
 }
+
+constexpr uint8_t PCA9685Controller::Addresses[PCA9685Controller::CONTROLLER_COUNT];

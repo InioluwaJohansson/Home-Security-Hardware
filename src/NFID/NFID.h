@@ -1,47 +1,24 @@
 #pragma once
-
 #include <Arduino.h>
-#include <functional>
-
+#include <Wire.h>
+#include "../Config/Config.h"
+#include "../MQTT/MQTT.h"
 #include "PN532Protocol.h"
-#include "../Models/NFIDModels.h"
+#include "NFIDModels.h"
 
-class ConfigurationManager;
-class MqttManager;
-
-class NFID
-{
+class NFID {
 public:
-
-    NFID(
-        ConfigurationManager& configuration,
-        MqttManager& mqtt,
-        uint8_t sda,
-        uint8_t scl);
-
+    NFID(ConfigurationManager& configuration, MqttManager& mqtt, TwoWire& wire);
+    NFID(ConfigurationManager& configuration, MqttManager& mqtt, uint8_t sda, uint8_t scl);
     bool Initialize();
-
     void Update();
-
-    void QueueWrite(
-        const String& nfidCode);
-
+    void QueueWrite(const String& nfidCode);
 private:
-
     void HandleRead();
-
     void HandleWrite();
-
-    void PublishVerification(
-        const String& nfidCode);
-
-private:
-
-    Configuration& _configuration;
-
+    void PublishVerification(const String& nfidCode);
+    ConfigurationManager& _configuration;
     MqttManager& _mqtt;
-
     PN532Protocol _protocol;
-
     NFIDContext _context;
 };

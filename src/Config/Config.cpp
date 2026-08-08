@@ -2,7 +2,9 @@
 
 bool ConfigurationManager::Initialize()
 {
-    storage.Begin();
+    if (!storage.Begin())
+        return false;
+
     configuration = storage.LoadConfiguration();
     return true;
 }
@@ -30,4 +32,14 @@ const String& ConfigurationManager::GetJwt() const
 bool ConfigurationManager::IsAuthenticated() const
 {
     return jwt.HasToken();
+}
+
+void ConfigurationManager::Logout()
+{
+    jwt.Clear();
+}
+
+bool ConfigurationManager::IsProvisioned() const
+{
+    return configuration.IsProvisioned;
 }

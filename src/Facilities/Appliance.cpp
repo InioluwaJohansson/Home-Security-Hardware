@@ -1,5 +1,4 @@
 #include "Appliance.h"
-#include "../Hardware/Hardware.h"
 ApplianceManager::ApplianceManager(
     IHardwareController& hardware)
     : _hardware(hardware)
@@ -16,11 +15,14 @@ void ApplianceManager::Initialize()
 
 ApplianceDeviceState ApplianceManager::GetCurrentState(int applianceId)
 {
+    if (applianceId < 0 || applianceId >= MAX_APPLIANCES) return {};
     return _cache[applianceId];
 }
 
 void ApplianceManager::Apply(const ApplianceDeviceState& state)
 {
+    if (state.ApplianceId < 0 || state.ApplianceId >= MAX_APPLIANCES) return;
+
     auto current = GetCurrentState(state.ApplianceId);
 
     if (current.IsActive == state.IsActive)

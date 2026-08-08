@@ -1,8 +1,7 @@
 #include "Heartbeat.h"
 
-#include "../Configuration/ConfigurationManager.h"
-#include "../MQTT/MqttManager.h"
-#include "../Models/HardwareHeartBeatDto.h"
+#include "../Config/Config.h"
+#include "../MQTT/MQTT.h"
 
 Heartbeat::Heartbeat(
     ConfigurationManager& configuration,
@@ -16,16 +15,23 @@ Heartbeat::Heartbeat(
 
 void Heartbeat::Update()
 {
-    const unsigned long currentTime = millis();
+    const unsigned long now = millis();
 
-    if (currentTime - _lastHeartbeat < Interval)
+    const unsigned long interval =
+        static_cast<unsigned long>(
+            _configuration.GetConfiguration().HeartbeatInterval) *
+        1000UL;
+
+    if (interval > 0 &&
+        now - _lastHeartbeat < interval)
     {
         return;
     }
 
-    _lastHeartbeat = currentTime;
+    _lastHeartbeat = now;
 
-    const auto& configuration = _configuration.GetConfiguration();
+    const auto& configuration =
+        _configuration.GetConfiguration();
 
     HardwareHeartBeatDto dto;
 

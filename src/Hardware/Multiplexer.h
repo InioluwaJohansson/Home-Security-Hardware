@@ -5,16 +5,13 @@
 class MultiplexerController
 {
 public:
+    enum class Bus : uint8_t { Door = 0, Window = 1, External = 2 };
 
     void Initialize();
-
-    void SelectChannel(uint8_t channel);
-
-    bool DigitalRead(uint8_t channel);
-
-    int AnalogRead(uint8_t channel);
+    bool DigitalRead(Bus bus, uint8_t channel, bool activeHigh = true);
+    int AnalogRead(Bus bus, uint8_t channel);
 
 private:
-
     void SetAddress(uint8_t channel);
+    int SignalPin(Bus bus) const;
 };

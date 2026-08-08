@@ -1,5 +1,4 @@
 #include "Light.h"
-#include "../Hardware/Hardware.h"
 
 LightManager::LightManager(
     IHardwareController& hardware)
@@ -19,10 +18,13 @@ void LightManager::Initialize()
 
 LightDeviceState LightManager::GetCurrentState(int lightId)
 {
+    if (lightId < 0 || lightId >= MAX_LIGHTS) return {};
     return _cache[lightId];
 }
 void LightManager::Apply(const LightDeviceState& state)
 {
+    if (state.LightId < 0 || state.LightId >= MAX_LIGHTS) return;
+
     auto current = GetCurrentState(state.LightId);
 
     if(current.IsActive == state.IsActive &&

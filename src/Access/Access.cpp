@@ -5,10 +5,16 @@ Access::Access(DoorManager& door)
 {
 }
 
+bool Access::Initialize()
+{
+    return true;
+}
+
 void Access::Grant(int doorId)
 {
     GenericDeviceUpdateState update;
 
+    update.Type = FacilityType::Door;
     update.Id = doorId;
     update.IsLocked = false;
     update.IsOpen = true;
@@ -18,5 +24,8 @@ void Access::Grant(int doorId)
 
 void Access::Deny()
 {
-    
+}
+
+void Access::Update()
+{
 }

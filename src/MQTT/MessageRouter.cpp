@@ -1,7 +1,7 @@
 #include "MessageRouter.h"
 
 #include "../Config/Config.h"
-#include "../Devices/DeviceManager.h"
+#include "../Facilities/Devices.h"
 #include "../Access/Access.h"
 #include "../Fingerprint/Fingerprint.h"
 #include "../NFID/NFID.h"

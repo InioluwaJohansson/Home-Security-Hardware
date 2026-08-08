@@ -1,5 +1,4 @@
 #include "Camera.h"
-#include "../Hardware/Hardware.h"
 CameraManager::CameraManager(
     IHardwareController& hardware)
     : _hardware(hardware)
@@ -16,11 +15,14 @@ void CameraManager::Initialize()
 
 CameraDeviceState CameraManager::GetCurrentState(int cameraId)
 {
+    if (cameraId < 0 || cameraId >= MAX_CAMERAS) return {};
     return _cache[cameraId];
 }
 
 void CameraManager::Apply(const CameraDeviceState& state)
 {
+    if (state.CameraId < 0 || state.CameraId >= MAX_CAMERAS) return;
+
     auto current = GetCurrentState(state.CameraId);
 
     if (current.IsActive == state.IsActive)

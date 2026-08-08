@@ -13,57 +13,69 @@ enum class FacilityType
     External = 6
 };
 
+enum class DoorType
+{
+    Interior = 1,
+    Exterior = 2,
+    Gate = 3
+};
+
 struct ApplianceDeviceState
 {
-    int ApplianceId;
-    bool IsActive;
-    int ApplianceType;
+    int ApplianceId = -1;
+    bool IsActive = false;
+    int ApplianceType = 0;
 };
 
 struct LightDeviceState
 {
-    int LightId;
-    int BrightnessLevel;
-    bool IsActive;
+    int LightId = -1;
+    int BrightnessLevel = 0;
+    bool IsActive = false;
 };
 
 struct CameraDeviceState
 {
-    int CameraId;
-    bool IsActive;
+    int CameraId = -1;
+    bool IsActive = false;
 };
 
 struct WindowDeviceState
 {
-    int WindowId;
-    bool IsLocked;
-    bool IsOpen;
+    int WindowId = -1;
+    bool IsLocked = false;
+    bool IsOpen = false;
 };
 
 struct DoorDeviceState
 {
-    int DoorId;
-    bool IsLocked;
-    bool IsOpen;
+    int DoorId = -1;
+    bool IsLocked = false;
+    bool IsOpen = false;
+    DoorType Type = DoorType::Interior;
 };
 
 struct ExternalDeviceState
 {
-    int ExternalId;
-    bool IsActive;
-    bool IsTriggered;
+    int ExternalId = -1;
+
+    // IsActive means the external sensor/input is enabled.
+    bool IsActive = false;
+
+    // IsTriggered is the actual physical sensor state.
+    bool IsTriggered = false;
 };
 
 struct GenericDeviceUpdateState
 {
-    FacilityType Type;
-    int Id;
-    int BrightnessLevel;
-    bool IsLocked;
-    bool IsOpen;
-    bool IsTriggered;
-    bool IsActive;
-    bool PowerActive;
+    FacilityType Type = FacilityType::External;
+    int Id = -1;
+    int BrightnessLevel = 0;
+    bool IsLocked = false;
+    bool IsOpen = false;
+    bool IsTriggered = false;
+    bool IsActive = false;
+    bool PowerActive = false;
     String Token;
 };
 
@@ -76,6 +88,6 @@ struct GenericDeviceState
     std::vector<DoorDeviceState> DoorDeviceStates;
     std::vector<ExternalDeviceState> ExternalDeviceStates;
 
-    unsigned long Timestamp;
+    unsigned long Timestamp = 0;
     String Token;
 };

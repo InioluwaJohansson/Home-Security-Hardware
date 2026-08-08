@@ -10,14 +10,39 @@ Provisioning::Provisioning(
 }
 bool Provisioning::Begin()
 {
+    auto& config = _configuration.GetConfiguration();
+
+    if (config.IsProvisioned &&
+        !config.WifiSSID.isEmpty())
+    {
+        WiFi.mode(WIFI_STA);
+
+        WiFi.begin(
+            config.WifiSSID.c_str(),
+            config.WifiPassword.c_str());
+
+        const unsigned long start = millis();
+
+        while (WiFi.status() != WL_CONNECTED &&
+               millis() - start < 15000)
+        {
+            delay(250);
+        }
+
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            _running = false;
+            return true;
+        }
+
+        WiFi.disconnect(true);
+    }
+
     StartAccessPoint();
-
     ConfigureRoutes();
-
     _server.begin();
 
     _running = true;
-
     return true;
 }
 void Provisioning::Loop()
@@ -161,6 +186,8 @@ bool Provisioning::Provision(
     config.IsProvisioned = true;
 
     _configuration.Save();
+
+    _running = false;
 
     message =
         "Provision successful";
