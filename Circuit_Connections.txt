@@ -1,0 +1,944 @@
+HOME SECURITY HARDWARE
+COMPONENTS AND COMPLETE CIRCUIT CONNECTION GUIDE
+================================================
+
+This document describes the physical hardware required by the current
+Home Security Hardware design and how the major subsystems connect.
+
+IMPORTANT
+---------
+This is the electrical integration plan for the current firmware resource
+map. Motor drivers, power supplies, fuses, wire gauges, connectors and
+terminal blocks must be selected according to the actual motor voltage,
+stall current and mechanical load of each installation.
+
+Never power a door/window motor from the ESP32, MCP23017, PCA9685 or
+ADS1115 supply rails.
+
+------------------------------------------------------------
+1. MAIN CONTROLLER
+------------------------------------------------------------
+
+1 x ESP32 development board
+    - Main controller
+    - Wi-Fi
+    - MQTT communication
+    - Hardware control
+
+ESP32 direct pins currently allocated:
+
+GPIO 21  -> I2C SDA
+GPIO 22  -> I2C SCL
+
+GPIO 16  <- R50x fingerprint TX
+GPIO 17  -> R50x fingerprint RX
+
+GPIO 25  -> 74HC4067 S0
+GPIO 26  -> 74HC4067 S1
+GPIO 27  -> 74HC4067 S2
+GPIO 14  -> 74HC4067 S3
+
+GPIO 34  <- Door 74HC4067 SIG
+GPIO 35  <- Window 74HC4067 SIG
+GPIO 36  <- External 74HC4067 SIG
+
+GPIO 4   <- Door 0 encoder A
+GPIO 5   <- Door 0 encoder B
+GPIO 12  <- Door 1 encoder A
+GPIO 13  <- Door 1 encoder B
+GPIO 15  <- Door 2 encoder A
+GPIO 18  <- Door 2 encoder B
+GPIO 19  <- Door 3 encoder A
+GPIO 2   <- Door 3 encoder B
+
+GPIO 23  <- Preferences reset button
+
+GPIO 32  <-> PN532 IRQ
+GPIO 33  -> PN532 RESET
+
+NOTE:
+GPIO 2, GPIO 12 and GPIO 15 are ESP32 strapping pins. The encoder
+interface must not force an invalid level during boot. Use appropriate
+external biasing/interface circuitry.
+
+------------------------------------------------------------
+2. I2C BUS
+------------------------------------------------------------
+
+The following devices share:
+
+ESP32 GPIO 21 = SDA
+ESP32 GPIO 22 = SCL
+
+I2C devices:
+
+MCP23017 #0  -> address 0x20
+MCP23017 #1  -> address 0x21
+MCP23017 #2  -> address 0x22
+MCP23017 #3  -> address 0x23
+
+PCA9685 #0    -> address 0x40
+PCA9685 #1    -> address 0x41
+
+ADS1115 #0    -> address 0x48
+ADS1115 #1    -> address 0x49
+ADS1115 #2    -> address 0x4A
+ADS1115 #3    -> address 0x4B
+
+PN532         -> I2C bus
+                IRQ = GPIO 32
+                RESET = GPIO 33
+
+All I2C devices share SDA, SCL and GND.
+
+Use appropriate pull-up resistors on SDA/SCL. Do not add multiple
+uncontrolled sets of pull-ups if the breakout boards already contain them.
+
+------------------------------------------------------------
+3. MCP23017 GPIO EXPANDERS
+------------------------------------------------------------
+
+Four MCP23017 expanders are required.
+
+MCP23017 0x20
+--------------
+GP0-GP5   -> 6 lights
+GP6-GP13  -> 8 appliances
+GP14-GP15 -> cameras 0 and 1
+
+MCP23017 0x21
+--------------
+GP0       -> camera 2
+GP1-GP4   -> door motor direction 0-3
+GP5-GP8   -> door lock direction 0-3
+GP9-GP15  -> spare
+
+MCP23017 0x22
+--------------
+GP0-GP3   -> window motor direction 0-3
+GP4-GP7   -> window lock direction 0-3
+GP8-GP12  -> external outputs 0-4
+GP13      -> buzzer control
+GP14      -> siren/alarm control
+GP15      -> spare
+
+MCP23017 0x23
+--------------
+GP0-GP7   -> window encoder A/B inputs for windows 0-3
+GP8-GP15  -> spare
+
+The MCP23017 outputs must NOT directly drive motors, locks, buzzers or
+sirens that exceed their electrical ratings. Use suitable transistor,
+MOSFET, relay or motor-driver interfaces.
+
+------------------------------------------------------------
+4. PCA9685 PWM CONTROLLERS
+------------------------------------------------------------
+
+Two PCA9685 boards are required.
+
+PCA9685 0x40
+------------
+
+CH0-CH3   -> door movement motor PWM 0-3
+CH4-CH7   -> door lock actuator PWM 0-3
+CH8-CH11  -> window movement motor PWM 0-3
+CH12-CH15 -> window lock actuator PWM 0-3
+
+PCA9685 0x41
+------------
+
+CH0-CH5   -> light brightness PWM 0-5
+CH6-CH15  -> spare
+
+IMPORTANT:
+The PCA9685 supplies PWM control signals. It does NOT provide enough
+current to drive the motors directly.
+
+Each motor/actuator PWM output must feed the PWM/ENABLE input of the
+appropriate motor driver.
+
+------------------------------------------------------------
+5. MOTOR DRIVERS
+------------------------------------------------------------
+
+The system controls:
+
+4 sliding-door movement motors
+4 sliding-window movement motors
+4 door lock actuators
+4 window lock actuators
+
+Total motorized channels:
+    16 actuator channels
+
+Each actuator needs a suitable H-bridge or equivalent bidirectional
+motor driver.
+
+For each bidirectional motor:
+
+PCA9685 PWM channel
+        |
+        +----> H-bridge PWM/ENABLE
+
+MCP23017 direction output
+        |
+        +----> H-bridge direction/input
+
+Motor driver output
+        |
+        +----> DC motor
+
+Motor power supply
+        |
+        +----> H-bridge power stage
+        |
+        +----> motor
+
+The driver must be rated for the motor's:
+    - nominal voltage
+    - continuous current
+    - startup current
+    - stall current
+
+For the sliding doors, size the driver for the actual worst-case
+stall current rather than the normal running current.
+
+Speed is controlled with PWM.
+
+Direction is controlled separately.
+
+Acceleration/deceleration is handled by firmware by changing PWM rather
+than by directly switching the motor supply.
+
+------------------------------------------------------------
+6. SLIDING DOORS
+------------------------------------------------------------
+
+There are 4 doors.
+
+Each door has:
+
+    1 x sliding DC motor
+    1 x bidirectional motor driver
+    1 x quadrature encoder (A/B)
+    1 x fully-open Hall sensor
+    1 x fully-closed Hall sensor
+    1 x lock/unlock position sensor
+    1 x motor current sensor
+    1 x motorized lock actuator/driver
+
+Door sensor connection:
+
+Door 0:
+    4067 CH0 -> open Hall
+    4067 CH1 -> close Hall
+    4067 CH2 -> lock position
+
+Door 1:
+    4067 CH3 -> open Hall
+    4067 CH4 -> close Hall
+    4067 CH5 -> lock position
+
+Door 2:
+    4067 CH6 -> open Hall
+    4067 CH7 -> close Hall
+    4067 CH8 -> lock position
+
+Door 3:
+    4067 CH9 -> open Hall
+    4067 CH10 -> close Hall
+    4067 CH11 -> lock position
+
+The four door encoders use direct ESP32 GPIOs:
+
+Door 0:
+    A -> GPIO 4
+    B -> GPIO 5
+
+Door 1:
+    A -> GPIO 12
+    B -> GPIO 13
+
+Door 2:
+    A -> GPIO 15
+    B -> GPIO 18
+
+Door 3:
+    A -> GPIO 19
+    B -> GPIO 2
+
+Door movement PWM:
+    PCA9685 0x40 CH0-CH3
+
+Door movement direction:
+    MCP23017 0x21 GP0-GP3
+
+Door lock PWM:
+    PCA9685 0x40 CH4-CH7
+
+Door lock direction:
+    MCP23017 0x21 GP5-GP8
+
+Door movement current:
+    ADS1115 0x48 channels 0-3
+
+Door lock current:
+    ADS1115 0x4A channels 0-3
+
+DOOR SAFETY:
+    - Fully-open Hall sensor
+    - Fully-closed Hall sensor
+    - Lock-position sensor
+    - Encoder feedback
+    - Motor current limit
+    - Maximum travel time
+
+The Hall sensors are the primary physical end-stop mechanism.
+
+------------------------------------------------------------
+7. SLIDING WINDOWS
+------------------------------------------------------------
+
+There are 4 motorized windows.
+
+Each window has:
+
+    1 x DC motor
+    1 x bidirectional motor driver
+    1 x quadrature encoder
+    1 x fully-open Hall sensor
+    1 x fully-closed Hall sensor
+    1 x lock/unlock position sensor
+    1 x current sensor
+    1 x motorized lock actuator/driver
+
+Window 0:
+    4067 CH0 -> open Hall
+    4067 CH1 -> close Hall
+    4067 CH2 -> lock position
+
+Window 1:
+    4067 CH3 -> open Hall
+    4067 CH4 -> close Hall
+    4067 CH5 -> lock position
+
+Window 2:
+    4067 CH6 -> open Hall
+    4067 CH7 -> close Hall
+    4067 CH8 -> lock position
+
+Window 3:
+    4067 CH9 -> open Hall
+    4067 CH10 -> close Hall
+    4067 CH11 -> lock position
+
+Window encoder inputs:
+
+MCP23017 0x23:
+    GP0 -> Window 0 encoder A
+    GP1 -> Window 0 encoder B
+    GP2 -> Window 1 encoder A
+    GP3 -> Window 1 encoder B
+    GP4 -> Window 2 encoder A
+    GP5 -> Window 2 encoder B
+    GP6 -> Window 3 encoder A
+    GP7 -> Window 3 encoder B
+
+Window movement PWM:
+    PCA9685 0x40 CH8-CH11
+
+Window movement direction:
+    MCP23017 0x22 GP0-GP3
+
+Window lock PWM:
+    PCA9685 0x40 CH12-CH15
+
+Window lock direction:
+    MCP23017 0x22 GP4-GP7
+
+Window movement current:
+    ADS1115 0x49 channels 0-3
+
+Window lock current:
+    ADS1115 0x4B channels 0-3
+
+WINDOW LOCKING RULE:
+    If a window is open and a lock command is received:
+        1. Stop/override the current movement if necessary.
+        2. Close the window.
+        3. Confirm the closed Hall sensor.
+        4. Drive the lock actuator.
+        5. Confirm the lock-position sensor.
+        6. Stop the lock actuator.
+
+The same close-before-lock rule applies to doors.
+
+------------------------------------------------------------
+8. 74HC4067 MULTIPLEXERS
+------------------------------------------------------------
+
+Three 74HC4067 multiplexers are used.
+
+All three share:
+
+S0 -> GPIO 25
+S1 -> GPIO 26
+S2 -> GPIO 27
+S3 -> GPIO 14
+
+Each has its own SIG line:
+
+Door MUX:
+    SIG -> GPIO 34
+
+Window MUX:
+    SIG -> GPIO 35
+
+External MUX:
+    SIG -> GPIO 36
+
+The three SIG lines are input-only ESP32 pins.
+
+Door and window sensors are digital Hall/position sensors.
+
+------------------------------------------------------------
+9. EXTERNAL PIR SENSORS
+------------------------------------------------------------
+
+Five EKMC1601111 PIR sensors are used.
+
+External MUX:
+
+    CH0 -> PIR External 0
+    CH1 -> PIR External 1
+    CH2 -> PIR External 2
+    CH3 -> PIR External 3
+    CH4 -> PIR External 4
+
+CH5-CH15 remain spare.
+
+All five PIR inputs are treated as active-high.
+
+Each PIR must have:
+    VCC -> appropriate sensor supply
+    GND -> common GND
+    OUT -> corresponding 4067 channel
+
+IMPORTANT:
+If the backend marks an external sensor IsActive=false, firmware does
+not poll that PIR.
+
+When an active PIR detects motion:
+    PIR detects motion
+        -> external IsTriggered becomes true
+        -> physical state is reported to backend
+        -> alarm/buzzer state becomes active
+
+------------------------------------------------------------
+10. ALARM AND BUZZER
+------------------------------------------------------------
+
+MCP23017 0x22:
+
+    GP13 -> buzzer control
+    GP14 -> siren/alarm control
+
+Do not connect a high-current siren directly to an MCP23017 pin.
+
+Use:
+
+MCP output
+    -> transistor/MOSFET driver
+    -> buzzer/siren power supply
+    -> buzzer/siren
+
+The alarm is state-driven.
+
+When a PIR causes IsTriggered=true:
+
+    Buzzer = ON
+    Siren  = ON
+
+They remain ON indefinitely.
+
+There is NO automatic alarm timeout.
+
+The backend clears the trigger:
+
+    IsTriggered = false
+
+Then:
+
+    Buzzer = OFF
+    Siren  = OFF
+
+This prevents the ESP32 from silently clearing an alarm that the backend
+has not acknowledged/reset.
+
+------------------------------------------------------------
+11. CURRENT SENSING
+------------------------------------------------------------
+
+Four ADS1115 modules are used.
+
+ADS1115 0x48:
+    CH0 -> Door motor 0 current
+    CH1 -> Door motor 1 current
+    CH2 -> Door motor 2 current
+    CH3 -> Door motor 3 current
+
+ADS1115 0x49:
+    CH0 -> Window motor 0 current
+    CH1 -> Window motor 1 current
+    CH2 -> Window motor 2 current
+    CH3 -> Window motor 3 current
+
+ADS1115 0x4A:
+    CH0 -> Door lock 0 current
+    CH1 -> Door lock 1 current
+    CH2 -> Door lock 2 current
+    CH3 -> Door lock 3 current
+
+ADS1115 0x4B:
+    CH0 -> Window lock 0 current
+    CH1 -> Window lock 1 current
+    CH2 -> Window lock 2 current
+    CH3 -> Window lock 3 current
+
+The firmware requires calibration values for:
+    zeroVoltage
+    voltsPerAmp
+
+These values must match the actual current sensor used.
+
+Current sensing is a secondary safety mechanism. It should stop a motor
+when abnormal current indicates a jam/obstruction, while Hall sensors
+remain the primary end-stop mechanism.
+
+------------------------------------------------------------
+12. PN532 / NFID
+------------------------------------------------------------
+
+PN532 is connected using I2C.
+
+I2C:
+    SDA -> GPIO 21
+    SCL -> GPIO 22
+
+Control:
+    IRQ   -> GPIO 32
+    RESET -> GPIO 33
+
+Power:
+    Use the voltage specified by the exact PN532 breakout/module.
+
+GND must be common with the ESP32 and I2C devices.
+
+The PN532 shares the I2C bus with:
+    MCP23017
+    PCA9685
+    ADS1115
+
+The devices use different I2C addresses, so they can share the bus.
+
+------------------------------------------------------------
+13. R50x FINGERPRINT MODULE
+------------------------------------------------------------
+
+UART2:
+
+ESP32 GPIO 17 TX -> Fingerprint RX
+ESP32 GPIO 16 RX <- Fingerprint TX
+
+GND -> common GND
+
+Power the fingerprint module using the voltage required by the actual
+R50x module.
+
+Do not connect two UART transmitters to the same RX line.
+
+------------------------------------------------------------
+14. RESET-PREFERENCES BUTTON
+------------------------------------------------------------
+
+Physical button:
+
+    One side -> ESP32 GPIO 23
+    Other side -> GND
+
+Firmware uses the ESP32 internal pull-up.
+
+Normal state:
+    GPIO 23 = HIGH
+
+Button pressed:
+    GPIO 23 = LOW
+
+The firmware requires a deliberate 10-second hold before resetting
+stored preferences.
+
+The reset operation clears the intended stored configuration and
+restarts the ESP32 into the provisioning flow.
+
+Use a normally-open momentary push button.
+
+------------------------------------------------------------
+15. LIGHTS
+------------------------------------------------------------
+
+Six lights:
+
+MCP23017 0x20:
+    GP0-GP5 -> light switching/control
+
+PCA9685 0x41:
+    CH0-CH5 -> light brightness PWM
+
+If a light is mains-powered, the MCP23017/PCA9685 must NOT be connected
+directly to the mains load.
+
+Use an appropriately rated:
+    relay
+    SSR
+    MOSFET
+    or other isolated power-stage
+
+The exact switching circuit depends on whether the light is AC or DC.
+
+------------------------------------------------------------
+16. APPLIANCES
+------------------------------------------------------------
+
+Eight appliances:
+
+MCP23017 0x20:
+    GP6-GP13 -> appliance control
+
+Again, these GPIO expander outputs are control signals only.
+
+For mains appliances, use appropriately rated relays/contactors/SSRs,
+with isolation and protection.
+
+------------------------------------------------------------
+17. CAMERAS
+------------------------------------------------------------
+
+Three camera control outputs:
+
+MCP23017 0x20:
+    GP14 -> camera 0
+    GP15 -> camera 1
+
+MCP23017 0x21:
+    GP0 -> camera 2
+
+The exact electrical interface depends on how the camera hardware is
+being switched/controlled.
+
+------------------------------------------------------------
+18. POWER ARCHITECTURE
+------------------------------------------------------------
+
+Use separate power domains.
+
+DOMAIN A - LOGIC
+    ESP32
+    MCP23017
+    PCA9685 logic
+    ADS1115
+    PN532
+    fingerprint module
+
+DOMAIN B - MOTOR POWER
+    door motors
+    window motors
+    lock motors
+    H-bridges
+
+DOMAIN C - ALARM/LOAD POWER
+    siren
+    buzzer
+    relays/contactors
+    other higher-current loads
+
+Recommended architecture:
+
+Main DC supply
+      |
+      +---- Fuse ----> Motor driver power bus
+      |
+      +---- Fuse ----> DC/DC buck ----> 5V logic bus
+                                      |
+                                      +--> ESP32
+                                      +--> peripherals as appropriate
+
+Use a properly sized buck converter rather than dropping motor supply
+voltage through a linear regulator.
+
+All control electronics should share a common reference GND unless a
+specific isolated interface requires otherwise.
+
+For motor drivers, use short, appropriately sized power wiring and
+place suitable bulk/decoupling capacitors near the driver supply.
+
+Use a fuse or resettable protection device for each motor power branch
+where appropriate.
+
+------------------------------------------------------------
+19. GROUNDING
+------------------------------------------------------------
+
+The following must have a common logic reference:
+
+ESP32 GND
+MCP23017 GND
+PCA9685 GND
+ADS1115 GND
+74HC4067 GND
+PN532 GND
+Fingerprint GND
+PIR sensor GND
+Encoder GND
+Hall sensor GND
+Current sensor signal reference GND
+
+Motor power grounds should be connected according to the motor-driver
+manufacturer's recommended topology.
+
+Avoid routing large motor return currents through thin logic ground traces.
+
+Use a star/low-impedance power-ground arrangement where practical.
+
+------------------------------------------------------------
+20. COMPLETE SIGNAL FLOW
+------------------------------------------------------------
+
+DOOR OPEN:
+
+Backend command
+    |
+    v
+MQTT
+    |
+    v
+ESP32
+    |
+    v
+Door manager
+    |
+    +--> PCA9685 PWM
+    |
+    +--> MCP23017 direction
+    |
+    v
+H-bridge
+    |
+    v
+Door motor
+    |
+    +--> encoder feedback
+    +--> current sensor
+    +--> Hall open/close sensors
+    |
+    v
+Physical door state
+    |
+    v
+DeviceManager
+    |
+    v
+MQTT /state
+    |
+    v
+Backend
+
+
+WINDOW OPEN/CLOSE:
+
+Backend command
+    |
+    v
+MQTT
+    |
+    v
+Window manager
+    |
+    +--> PWM + direction
+    |
+    v
+H-bridge
+    |
+    v
+Window motor
+    |
+    +--> Hall sensors
+    +--> lock sensor
+    +--> encoder
+    +--> current sensor
+    |
+    v
+Physical state
+    |
+    v
+DeviceManager
+    |
+    v
+MQTT /state
+    |
+    v
+Backend
+
+
+PIR ALARM:
+
+PIR
+    |
+    v
+74HC4067
+    |
+    v
+ESP32 GPIO 36
+    |
+    v
+External sensor state
+    |
+    v
+IsTriggered = true
+    |
+    +--> MCP23017 0x22 GP13 -> buzzer
+    |
+    +--> MCP23017 0x22 GP14 -> siren
+    |
+    v
+MQTT /state
+    |
+    v
+Backend
+
+Alarm remains active until backend sends IsTriggered=false.
+
+
+------------------------------------------------------------
+21. SAFETY RULES
+------------------------------------------------------------
+
+1. Never drive a motor directly from ESP32/MCP23017/PCA9685 GPIO.
+
+2. Never drive a siren directly from an MCP23017 output.
+
+3. Use an H-bridge rated above the motor's worst-case stall current.
+
+4. Use current sensing to detect jams/overload.
+
+5. Use Hall sensors as physical travel end-stops.
+
+6. Use maximum travel time as a secondary failure protection.
+
+7. A lock command must close an open door/window before attempting to lock.
+
+8. Do not allow simultaneous opposite-direction commands to energize an
+   H-bridge.
+
+9. Hardware must fail safely if a sensor becomes disconnected or invalid.
+
+10. Motor power and logic power must be properly protected and decoupled.
+
+11. Confirm the actual voltage/current ratings of every purchased module
+    before wiring.
+
+12. Do not assume the GPIO numbers printed in this document are suitable
+    for a different ESP32 board variant without checking the board pinout.
+
+------------------------------------------------------------
+22. PROCUREMENT SUMMARY
+------------------------------------------------------------
+
+Main controller:
+    - 1 x ESP32 development board
+
+I2C GPIO expansion:
+    - 4 x MCP23017
+
+PWM:
+    - 2 x PCA9685
+
+ADC/current measurement:
+    - 4 x ADS1115
+    - 16 x compatible current sensors, one per motorized actuator
+
+Multiplexing:
+    - 3 x 74HC4067
+
+External detection:
+    - 5 x Panasonic EKMC1601111 PIR sensors
+
+Position/safety:
+    - 8 x quadrature encoders (4 doors + 4 windows)
+    - 24 x Hall/position sensors
+      (4 doors x 3 + 4 windows x 3)
+
+Motorized facilities:
+    - 4 x sliding-door DC motors
+    - 4 x window DC motors
+    - 4 x door lock actuators
+    - 4 x window lock actuators
+    - 16 x appropriately rated bidirectional motor-driver channels
+
+Identification/access:
+    - 1 x PN532 NFC/NFID module
+    - 1 x R50x/R307 fingerprint module
+
+Alarm:
+    - 1 x buzzer
+    - 1 x siren/alarm
+    - suitable MOSFET/transistor driver stages
+
+User control:
+    - 1 x normally-open momentary reset button
+
+Power and protection:
+    - appropriately rated DC power supply
+    - DC/DC buck converter(s)
+    - fuses/fuse holders
+    - terminal blocks/connectors
+    - bulk and ceramic decoupling capacitors
+    - appropriately sized motor wiring
+    - suitable enclosures and cable management
+
+For mains loads:
+    - appropriately rated relays/contactors/SSRs
+    - isolation/protection components as required
+
+------------------------------------------------------------
+23. FINAL WIRING CHECK
+------------------------------------------------------------
+
+Before applying power:
+
+[ ] ESP32 and all logic grounds verified
+[ ] I2C SDA/SCL checked
+[ ] No duplicate I2C addresses
+[ ] PN532 confirmed at the intended I2C address
+[ ] Fingerprint TX/RX crossed correctly
+[ ] 74HC4067 S0-S3 verified
+[ ] Each MUX has the correct SIG input
+[ ] Door Hall channels verified
+[ ] Window Hall channels verified
+[ ] Lock-position channels verified
+[ ] PIR channels 0-4 verified
+[ ] Door encoder A/B verified
+[ ] Window encoder A/B verified
+[ ] PCA9685 addresses verified
+[ ] ADS1115 addresses verified
+[ ] Current sensors calibrated
+[ ] Every motor has its own properly rated driver
+[ ] Driver direction/PWM wiring verified
+[ ] Motor supply voltage verified
+[ ] Motor stall current verified against driver rating
+[ ] Buzzer driver verified
+[ ] Siren driver verified
+[ ] Reset button wiring verified
+[ ] Mains circuits isolated from low-voltage logic
+[ ] Fuses/protection installed
+[ ] Motors tested with reduced PWM before full-speed operation

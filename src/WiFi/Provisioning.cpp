@@ -2373,7 +2373,7 @@ bool Provisioning::DownloadConfiguration(
     if (url.indexOf("/Home_Security") < 0)
         url += "/Home_Security";
 
-    url += "/MicroController/GetMicroControllerMTTQConfig";
+    url += "/MicroController/GetMicroControllerMQTTConfig";
 
     auto encode = [](const String& value) -> String
     {
