@@ -35,6 +35,7 @@ void SensorController::Update()
     UpdateDoors();
     UpdateWindows();
     UpdateExternals();
+    UpdateAlarm();
     UpdateResetButton();
 }
 
@@ -72,17 +73,14 @@ void SensorController::UpdateDoors()
 
         _cache.UpdateDoor(state);
 
-        JsonDocument json;
+        GenericDeviceUpdateState update;
 
-        json["doorId"] = state.DoorId;
-        json["isOpen"] = state.IsOpen;
-        json["isLocked"] = state.IsLocked;
+        update.Type = FacilityType::Door;
+        update.Id = state.DoorId;
+        update.IsOpen = state.IsOpen;
+        update.IsLocked = state.IsLocked;
 
-        _mqtt.Publish(
-            "home/" +
-            _configuration.GetConfiguration().HardwareId +
-            "/state",
-            json);
+        _devices.NotifyPhysicalStateChanged(update);
     }
 }
 
@@ -112,17 +110,14 @@ void SensorController::UpdateWindows()
 
         _cache.UpdateWindow(state);
 
-        JsonDocument json;
+        GenericDeviceUpdateState update;
 
-        json["windowId"] = state.WindowId;
-        json["isOpen"] = state.IsOpen;
-        json["isLocked"] = state.IsLocked;
+        update.Type = FacilityType::Window;
+        update.Id = state.WindowId;
+        update.IsOpen = state.IsOpen;
+        update.IsLocked = state.IsLocked;
 
-        _mqtt.Publish(
-            "home/" +
-            _configuration.GetConfiguration().HardwareId +
-            "/state",
-            json);
+        _devices.NotifyPhysicalStateChanged(update);
     }
 }
 
@@ -130,9 +125,8 @@ void SensorController::UpdateExternals()
 {
     for (int i = 0; i < MAX_EXTERNALS; ++i)
     {
-        // IMPORTANT:
         // IsActive is the enable/configuration flag.
-        // If the external input is disabled, do NOT read the sensor.
+        // If the external input is disabled, do NOT read the PIR.
         if (!_cache.HasExternal(i))
             continue;
 
@@ -141,53 +135,117 @@ void SensorController::UpdateExternals()
         if (!state.IsActive)
             continue;
 
-        const bool triggered =
+        const bool detected =
             _hardware.ReadExternalSensor(i);
 
-        if (state.IsTriggered == triggered)
+        // A physical PIR detection latches the alarm trigger. The ESP32
+        // must NOT clear IsTriggered merely because the PIR returns LOW.
+        // The backend owns the reset by sending IsTriggered=false.
+        if (!detected || state.IsTriggered)
             continue;
 
-        state.IsTriggered = triggered;
+        state.IsTriggered = true;
 
         _cache.UpdateExternal(state);
 
-        JsonDocument json;
+        GenericDeviceUpdateState update;
 
-        json["externalId"] = state.ExternalId;
-        json["isActive"] = state.IsActive;
-        json["isTriggered"] = state.IsTriggered;
+        update.Type = FacilityType::External;
+        update.Id = state.ExternalId;
+        update.IsActive = state.IsActive;
+        update.IsTriggered = state.IsTriggered;
 
-        _mqtt.Publish(
-            "home/" +
-            _configuration.GetConfiguration().HardwareId +
-            "/state",
-            json);
+        _devices.NotifyPhysicalStateChanged(update);
     }
+}
+
+void SensorController::UpdateAlarm()
+{
+    static bool lastAlarmTriggered = false;
+
+    bool alarmTriggered = false;
+
+    for (int i = 0; i < MAX_EXTERNALS; ++i)
+    {
+        if (!_cache.HasExternal(i))
+            continue;
+
+        const ExternalDeviceState state = _cache.GetExternal(i);
+
+        if (state.IsActive && state.IsTriggered)
+        {
+            alarmTriggered = true;
+            break;
+        }
+    }
+
+    // Alarm state is persistent until the backend clears every triggered
+    // external. There is deliberately no timeout here.
+    if (alarmTriggered == lastAlarmTriggered)
+        return;
+
+    _hardware.SetBuzzer(alarmTriggered);
+    _hardware.SetSiren(alarmTriggered);
+    lastAlarmTriggered = alarmTriggered;
 }
 
 void SensorController::UpdateResetButton()
 {
-    static bool pressed = false;
-    static unsigned long pressedTime = 0;
+    static bool rawState = false;
+    static bool stableState = false;
+    static unsigned long rawChangedAt = 0;
+    static unsigned long pressedAt = 0;
+    static bool resetHandled = false;
 
-    const bool current = _hardware.ReadResetButton();
+    const unsigned long now = millis();
+    const bool raw = _hardware.ReadResetButton();
 
-    if (current)
+    if (raw != rawState)
     {
-        if (!pressed)
-        {
-            pressed = true;
-            pressedTime = millis();
-        }
+        rawState = raw;
+        rawChangedAt = now;
+    }
 
-        if (millis() - pressedTime >= 10000)
+    if (now - rawChangedAt < 50)
+        return;
+
+    if (stableState != rawState)
+    {
+        stableState = rawState;
+
+        if (stableState)
         {
-            pressed = false;
-            // Reset/provisioning action can be wired here.
+            pressedAt = now;
+            resetHandled = false;
+        }
+        else
+        {
+            resetHandled = false;
         }
     }
-    else
+
+    if (stableState &&
+        !resetHandled &&
+        now - pressedAt >= 10000)
     {
-        pressed = false;
+        resetHandled = true;
+
+        Serial.println("[RESET] Preferences reset requested");
+
+        _hardware.SetBuzzer(true);
+        _hardware.SetSiren(true);
+        delay(250);
+
+        if (_configuration.ResetPreferences())
+        {
+            Serial.println("[RESET] Preferences cleared; restarting");
+            _hardware.SetBuzzer(false);
+            _hardware.SetSiren(false);
+            delay(100);
+            ESP.restart();
+        }
+
+        _hardware.SetBuzzer(false);
+        _hardware.SetSiren(false);
     }
 }

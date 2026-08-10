@@ -42,9 +42,27 @@ namespace Pins
     static_assert(MUX_EXTERNAL_SIG >= 34, "External MUX SIG must be input-only GPIO");
 
     //==================================================
+    // Quadrature encoder inputs
+    // 8 dedicated ESP32 GPIOs for the four door encoders (A/B).
+    // Window encoders use MCP23017 #3 because all safe direct GPIOs are
+    // already consumed by I2C, PN532 control, UART, MUX signals and door
+    // encoder inputs.
+    // GPIO2/12/15 are ESP32 strapping pins; the external encoder
+    // interface must not force an invalid boot level.
+    //==================================================
+    constexpr uint8_t DOOR0_ENCODER_A = 4;
+    constexpr uint8_t DOOR0_ENCODER_B = 5;
+    constexpr uint8_t DOOR1_ENCODER_A = 12;
+    constexpr uint8_t DOOR1_ENCODER_B = 13;
+    constexpr uint8_t DOOR2_ENCODER_A = 15;
+    constexpr uint8_t DOOR2_ENCODER_B = 18;
+    constexpr uint8_t DOOR3_ENCODER_A = 19;
+    constexpr uint8_t DOOR3_ENCODER_B = 2;
+
+    //==================================================
     // Local control
     //==================================================
-    constexpr uint8_t RESET_BUTTON = 10;
+    constexpr uint8_t RESET_BUTTON = 23;
 }
 
 namespace HardwareOutputs

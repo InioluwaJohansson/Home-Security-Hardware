@@ -27,6 +27,9 @@ public:
 
     bool IsProvisioned() const;
 
+    // Clears all persisted provisioning/preferences and JWT state.
+    bool ResetPreferences();
+
 private:
 
     StorageManager storage;

@@ -32,4 +32,5 @@ private:
     void UpdateWindows();
     void UpdateExternals();
     void UpdateResetButton();
+    void UpdateAlarm();
 };

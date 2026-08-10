@@ -70,12 +70,43 @@ namespace
         device.motorized.motor.pwm = Pwm(PCA_MOTOR, pwmBase + index);
         device.motorized.motor.direction = Digital(directionChip, directionBase + index);
 
-        const uint8_t encoderBase = window
-            ? static_cast<uint8_t>(8 + index * 2)
-            : static_cast<uint8_t>(index * 2);
+        static constexpr uint8_t doorEncoderA[MAX_DOORS] = {
+            Pins::DOOR0_ENCODER_A,
+            Pins::DOOR1_ENCODER_A,
+            Pins::DOOR2_ENCODER_A,
+            Pins::DOOR3_ENCODER_A
+        };
 
-        device.motorized.motor.encoderA = Sensor(SensorBus::McuGpio, encoderBase);
-        device.motorized.motor.encoderB = Sensor(SensorBus::McuGpio, encoderBase + 1);
+        static constexpr uint8_t doorEncoderB[MAX_DOORS] = {
+            Pins::DOOR0_ENCODER_B,
+            Pins::DOOR1_ENCODER_B,
+            Pins::DOOR2_ENCODER_B,
+            Pins::DOOR3_ENCODER_B
+        };
+
+        // The ESP32 has eight dedicated encoder inputs allocated to the
+        // four doors. Window encoder lines use MCP23017 #3. They are kept
+        // available for telemetry/position feedback and are not used as the
+        // primary safety stop; Hall limits, current and travel time remain
+        // the safety mechanisms.
+        static constexpr uint8_t windowEncoderA[MAX_WINDOWS] = { 0, 2, 4, 6 };
+        static constexpr uint8_t windowEncoderB[MAX_WINDOWS] = { 1, 3, 5, 7 };
+
+        if (window)
+        {
+            device.motorized.motor.encoderA =
+                Sensor(SensorBus::McpGpio, windowEncoderA[index], true);
+            device.motorized.motor.encoderB =
+                Sensor(SensorBus::McpGpio, windowEncoderB[index], true);
+        }
+        else
+        {
+            device.motorized.motor.encoderA =
+                Sensor(SensorBus::McuGpio, doorEncoderA[index]);
+            device.motorized.motor.encoderB =
+                Sensor(SensorBus::McuGpio, doorEncoderB[index]);
+        }
+
 
         device.motorized.motor.openSensor = Sensor(mux, sensorBase);
         device.motorized.motor.closeSensor = Sensor(mux, sensorBase + 1);

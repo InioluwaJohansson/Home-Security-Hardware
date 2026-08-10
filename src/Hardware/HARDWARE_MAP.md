@@ -17,7 +17,15 @@ This map is the physical resource allocation used by the Hardware layer.
 | 36 | External 4067 SIG | Input-only |
 | 16 | Fingerprint RX | UART2 |
 | 17 | Fingerprint TX | UART2 |
-| 10 | Reset button | Digital input |
+| 4 | Door 0 encoder A | Digital input |
+| 5 | Door 0 encoder B | Digital input |
+| 12 | Door 1 encoder A | Digital input (ESP32 strap pin) |
+| 13 | Door 1 encoder B | Digital input |
+| 15 | Door 2 encoder A | Digital input (ESP32 strap pin) |
+| 18 | Door 2 encoder B | Digital input |
+| 19 | Door 3 encoder A | Digital input |
+| 2 | Door 3 encoder B | Digital input |
+| 23 | Reset button (10-second hold) | Digital input, internal pull-up |
 
 PN532/NFID is **I2C**, not SPI. It shares GPIO 21/22 with the MCP23017,
 PCA9685 and ADS1115 devices. The old RFID SPI allocation is intentionally
@@ -30,7 +38,7 @@ Four expanders are used at `0x20`-`0x23`.
 - `0x20`: lights, appliances, cameras 0-1
 - `0x21`: camera 2, door movement direction, door lock direction
 - `0x22`: window movement direction, window lock direction, external outputs, buzzer, siren
-- `0x23`: encoder A/B inputs for all doors and windows
+- `0x23`: window encoder A/B inputs and spare encoder inputs
 
 ### MCP 0x20
 
@@ -56,12 +64,18 @@ Four expanders are used at `0x20`-`0x23`.
 
 ### MCP 0x23
 
-- GP0-GP7: door encoder A/B, doors 0-3
-- GP8-GP15: window encoder A/B, windows 0-3
+- GP0-GP7: window encoder A/B, windows 0-3
+- GP8-GP15: reserved
 
-Encoder inputs are not multiplexed. They are reserved for low-rate position
-feedback and diagnostics; the actual safety stop remains the open/close Hall
-sensor, lock-position sensor, current limit, and maximum travel time.
+Door encoder A/B inputs use dedicated ESP32 GPIOs and are not multiplexed.
+Window encoder inputs on the MCP23017 are reserved for telemetry/diagnostics;
+they are not the primary safety stop. The actual safety stop remains the
+open/close Hall sensor, lock-position sensor, current limit, and maximum
+travel time.
+
+GPIO 2, 12 and 15 are ESP32 strapping pins. The encoder interface must not
+force an invalid boot level; use an encoder electrical interface with
+appropriate external biasing.
 
 ## PCA9685
 
@@ -105,10 +119,13 @@ Four windows use channels 0-11.
 
 ### External multiplexer
 
-- CH0-CH4: five external inputs
+- CH0-CH4: five EKMC1601111 PIR external inputs
 - CH5-CH15: reserved
 
 No facility attempts to access a channel above 15.
+
+All five external PIR inputs are active-high digital inputs. `IsActive=false`
+means the controller does not poll that PIR.
 
 ## ADS1115
 

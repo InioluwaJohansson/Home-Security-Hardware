@@ -133,7 +133,52 @@ static bool InitializeApplication()
         *doors,
         *windows,
         *cameras,
-        *externals);
+        *externals,
+        stateCache);
+
+    // Every state change originating from a physical facility is published
+    // to the backend. DeviceManager suppresses callbacks while applying
+    // backend commands/synchronization, preventing MQTT echo loops.
+    deviceManager->DeviceStateChanged =
+        [](const GenericDeviceUpdateState& update)
+        {
+            if (mqtt == nullptr || !mqtt->IsConnected())
+            {
+                Serial.println(
+                    "[STATE] MQTT unavailable; physical state change not published");
+                return;
+            }
+
+            JsonDocument json;
+
+            json["FacilityType"] =
+                static_cast<int>(update.Type);
+
+            json["Id"] = update.Id;
+            json["BrightnessLevel"] = update.BrightnessLevel;
+            json["IsLocked"] = update.IsLocked;
+            json["IsOpen"] = update.IsOpen;
+            json["IsTriggered"] = update.IsTriggered;
+            json["IsActive"] = update.IsActive;
+            json["PowerActive"] = update.PowerActive;
+
+            const auto& config =
+                configuration.GetConfiguration();
+
+            if (!update.Token.isEmpty())
+                json["Token"] = update.Token;
+
+            const bool published =
+                mqtt->Publish(
+                    "home/" + config.HardwareId + "/state",
+                    json);
+
+            if (!published)
+            {
+                Serial.println(
+                    "[STATE] Failed to publish physical state change");
+            }
+        };
 
     securityAccess = new Access(*doors);
 
@@ -214,6 +259,17 @@ void setup()
     {
         provisioning->Loop();
         delay(10);
+    }
+
+    // Always obtain the latest MQTT broker configuration after WiFi and
+    // provisioning are available.
+    if (configuration.IsProvisioned())
+    {
+        if (!provisioning->RefreshMqttConfiguration())
+        {
+            Serial.println(
+                "[BOOT] MQTT configuration refresh failed; using stored values");
+        }
     }
 
     Wire.begin(Pins::I2C_SDA, Pins::I2C_SCL);

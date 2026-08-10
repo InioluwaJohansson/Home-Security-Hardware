@@ -14,7 +14,7 @@ bool MCP23017Controller::Initialize()
         }
     }
 
-    // MCP #3 is dedicated to the 16 quadrature encoder inputs.
+    // MCP #3 provides the eight window quadrature encoder inputs and spare encoder channels.
     for (uint8_t pin = 0; pin < 16; ++pin)
         _chips[CHIP_COUNT - 1].pinMode(pin, INPUT_PULLUP);
 

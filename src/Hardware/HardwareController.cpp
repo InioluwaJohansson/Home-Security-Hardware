@@ -33,7 +33,48 @@ void HardwareController::Initialize()
     if (!_adc.Initialize())
         Serial.println("[HARDWARE] ADS1115 initialization failed");
 
+    _mcp.PinMode(
+        HardwareOutputs::AlarmChip,
+        HardwareOutputs::BuzzerPin,
+        OUTPUT);
+
+    _mcp.PinMode(
+        HardwareOutputs::AlarmChip,
+        HardwareOutputs::SirenPin,
+        OUTPUT);
+
+    for (uint8_t pin = 0; pin < 8; ++pin)
+    {
+        _mcp.PinMode(
+            3,
+            pin,
+            INPUT);
+    }
+
+    _mcp.DigitalWrite(
+        HardwareOutputs::AlarmChip,
+        HardwareOutputs::BuzzerPin,
+        false);
+
+    _mcp.DigitalWrite(
+        HardwareOutputs::AlarmChip,
+        HardwareOutputs::SirenPin,
+        false);
+
     pinMode(Pins::RESET_BUTTON, INPUT_PULLUP);
+
+    // Encoder inputs are dedicated ESP32 GPIOs. Use pull-ups so open-collector
+    // encoder outputs have a defined idle state; external encoders may provide
+    // their own pull-ups and can override this electrically.
+    constexpr uint8_t encoderPins[] = {
+        Pins::DOOR0_ENCODER_A, Pins::DOOR0_ENCODER_B,
+        Pins::DOOR1_ENCODER_A, Pins::DOOR1_ENCODER_B,
+        Pins::DOOR2_ENCODER_A, Pins::DOOR2_ENCODER_B,
+        Pins::DOOR3_ENCODER_A, Pins::DOOR3_ENCODER_B
+    };
+
+    for (uint8_t pin : encoderPins)
+        pinMode(pin, INPUT);
 
     // Explicitly force every motor PWM channel off before anything can move.
     for (uint8_t i = 0; i < 16; ++i)
@@ -87,9 +128,19 @@ bool HardwareController::ReadSensor(const SensorEndpoint& sensor)
                 sensor.activeHigh);
 
         case SensorBus::McuGpio:
-            return _mcp.DigitalRead(
-                MCP23017Controller::CHIP_COUNT - 1,
-                sensor.channel) == (sensor.activeHigh ? HIGH : LOW);
+            if (sensor.channel >= 40)
+                return false;
+
+            return ::digitalRead(sensor.channel) ==
+                   (sensor.activeHigh ? HIGH : LOW);
+
+        case SensorBus::McpGpio:
+            if (sensor.chip >= MCP23017Controller::CHIP_COUNT ||
+                sensor.channel >= 16)
+                return false;
+
+            return _mcp.DigitalRead(sensor.chip, sensor.channel) ==
+                   (sensor.activeHigh ? HIGH : LOW);
 
         default:
             return false;

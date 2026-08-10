@@ -31,7 +31,10 @@ enum class SensorBus : uint8_t
     DoorMux,
     WindowMux,
     ExternalMux,
-    McuGpio
+    // channel is an actual ESP32 GPIO number.
+    McuGpio,
+    // channel is an MCP23017 pin; chip identifies the MCP device.
+    McpGpio
 };
 
 struct SensorEndpoint
@@ -39,11 +42,17 @@ struct SensorEndpoint
     SensorBus bus;
     uint8_t channel;
     bool activeHigh;
+    uint8_t chip;
 
-    SensorEndpoint(SensorBus busValue = SensorBus::None,
-                   uint8_t channelValue = INVALID_CHANNEL,
-                   bool activeHighValue = true)
-        : bus(busValue), channel(channelValue), activeHigh(activeHighValue) {}
+    SensorEndpoint(
+        SensorBus busValue = SensorBus::None,
+        uint8_t channelValue = INVALID_CHANNEL,
+        bool activeHighValue = true,
+        uint8_t chipValue = 0)
+        : bus(busValue),
+          channel(channelValue),
+          activeHigh(activeHighValue),
+          chip(chipValue) {}
 };
 
 struct CurrentSensorEndpoint

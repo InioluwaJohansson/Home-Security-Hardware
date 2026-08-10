@@ -35,7 +35,8 @@ void MessageRouter::Route(
         return;
     }
 
-    if(topic.endsWith("/hardware/auth/response"))
+    if(topic.endsWith("/hardware/auth/response") ||
+       topic.endsWith("/Hardware/Auth/Response"))
     {
         HandleAuthentication(doc);
         return;

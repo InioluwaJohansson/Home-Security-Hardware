@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "../Facilities/DeviceModels.h"
+#include "StateCache.h"
 #include <functional>
 class LightManager;
 class ApplianceManager;
@@ -22,12 +23,19 @@ public:
         DoorManager& doors,
         WindowManager& windows,
         CameraManager& cameras,
-        ExternalManager& externals);
+        ExternalManager& externals,
+        StateCache& stateCache);
 
     void ApplyState(
         const GenericDeviceState& state);
 
     void ApplyUpdate(
+        const GenericDeviceUpdateState& update);
+
+    // Publishes a state change originating from physical hardware.
+    // Backend-originated ApplyState/ApplyUpdate operations are suppressed
+    // from being echoed back to MQTT.
+    void NotifyPhysicalStateChanged(
         const GenericDeviceUpdateState& update);
 
 private:
@@ -38,6 +46,8 @@ private:
     WindowManager& _windows;
     CameraManager& _cameras;
     ExternalManager& _externals;
+    StateCache& _stateCache;
+    bool _suppressStateChanged = false;
 
     void OnStateChanged(const GenericDeviceUpdateState& update);
 };

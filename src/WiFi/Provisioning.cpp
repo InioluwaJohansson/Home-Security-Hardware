@@ -1,4 +1,6 @@
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include "Provisioning.h"
 
@@ -2332,6 +2334,27 @@ bool Provisioning::Provision(
 
     return true;
 }
+bool Provisioning::RefreshMqttConfiguration()
+{
+    auto& config = _configuration.GetConfiguration();
+
+    if (config.BackendUrl.isEmpty() ||
+        config.HardwareId.isEmpty() ||
+        config.AuthKey.isEmpty())
+    {
+        return false;
+    }
+
+    String message;
+
+    return DownloadConfiguration(
+        config.BackendUrl,
+        config.HardwareId,
+        config.AuthKey,
+        config,
+        message);
+}
+
 bool Provisioning::DownloadConfiguration(
     const String& backendUrl,
     const String& hardwareId,
@@ -2342,34 +2365,78 @@ bool Provisioning::DownloadConfiguration(
     HTTPClient http;
 
     String url = backendUrl;
+    while (url.endsWith("/"))
+        url.remove(url.length() - 1);
 
-    if (!url.endsWith("/"))
+    // Exact backend route supplied for MQTT bootstrap. If the user stored
+    // only the server origin, add the Home_Security route segment.
+    if (url.indexOf("/Home_Security") < 0)
+        url += "/Home_Security";
+
+    url += "/MicroController/GetMicroControllerMTTQConfig";
+
+    auto encode = [](const String& value) -> String
     {
-        url += "/";
+        const char hex[] = "0123456789ABCDEF";
+        String out;
+
+        for (size_t i = 0; i < value.length(); ++i)
+        {
+            const uint8_t c = static_cast<uint8_t>(value[i]);
+
+            if ((c >= 'a' && c <= 'z') ||
+                (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') ||
+                c == '-' || c == '_' || c == '.' || c == '~')
+            {
+                out += static_cast<char>(c);
+            }
+            else
+            {
+                out += '%';
+                out += hex[(c >> 4) & 0x0F];
+                out += hex[c & 0x0F];
+            }
+        }
+
+        return out;
+    };
+
+    url += "?hardWareId=";
+    url += encode(hardwareId);
+    url += "&AuthKey=";
+    url += encode(authKey);
+
+    Serial.print("[PROVISION] MQTT config GET: ");
+    Serial.println(url);
+
+    WiFiClientSecure secureClient;
+    WiFiClient plainClient;
+
+    bool begun = false;
+
+    if (url.startsWith("https://"))
+    {
+        // The controller must work with development tunnels whose public
+        // certificate is not installed on the ESP32. Production deployments
+        // should replace setInsecure() with a pinned/root CA certificate.
+        secureClient.setInsecure();
+        begun = http.begin(secureClient, url);
+    }
+    else
+    {
+        begun = http.begin(plainClient, url);
     }
 
-    url += "MicroProcessor/GetMicroControllerMTTQConfig";
-
-    if (!http.begin(url))
+    if (!begun)
     {
-        message = "Unable to connect to backend.";
+        message = "Unable to initialize backend HTTP client.";
         return false;
     }
 
-    http.addHeader(
-        "Content-Type",
-        "application/json");
+    http.addHeader("Accept", "*/*");
 
-    JsonDocument request;
-
-    request["hardwareId"] = hardwareId;
-    request["authKey"] = authKey;
-
-    String body;
-
-    serializeJson(request, body);
-
-    int statusCode = http.POST(body);
+    const int statusCode = http.GET();
 
     if (statusCode <= 0)
     {
@@ -2378,54 +2445,99 @@ bool Provisioning::DownloadConfiguration(
         return false;
     }
 
+    const String responseBody = http.getString();
+    http.end();
+
     if (statusCode != HTTP_CODE_OK)
     {
-        message = "Provisioning failed.";
-        http.end();
+        message = "MQTT configuration request failed.";
+        Serial.printf(
+            "[PROVISION] MQTT config HTTP status: %d\n",
+            statusCode);
         return false;
     }
 
     JsonDocument response;
 
-    auto error = deserializeJson(
-        response,
-        http.getString());
-
-    http.end();
+    const auto error =
+        deserializeJson(response, responseBody);
 
     if (error)
     {
-        message = "Invalid server response.";
+        message = "Invalid MQTT configuration response.";
         return false;
     }
 
-    bool status = response["status"] | false;
+    const bool status =
+        response["status"] | false;
 
     if (!status)
     {
-        message = response["message"] | "Provisioning failed.";
+        message =
+            response["message"] |
+            "Backend rejected MQTT configuration request.";
         return false;
     }
 
     JsonObject data = response["data"];
 
+    if (data.isNull())
+    {
+        message = "MQTT configuration data is missing.";
+        return false;
+    }
+
     config.MqttHost =
         data["mqttHost"] | "";
 
+    if (config.MqttHost.isEmpty())
+        config.MqttHost = data["MqttHost"] | "";
+
+    if (config.MqttHost.isEmpty())
+        config.MqttHost = data["host"] | "";
+
     config.MqttPort =
-        data["mqttPort"] | 1883;
+        data["mqttPort"] | 0;
+
+    if (config.MqttPort == 0)
+        config.MqttPort = data["MqttPort"] | 0;
+
+    if (config.MqttPort == 0)
+        config.MqttPort = data["port"] | 1883;
 
     config.MqttUsername =
         data["mqttUsername"] | "";
 
+    if (config.MqttUsername.isEmpty())
+        config.MqttUsername = data["MqttUsername"] | "";
+
+    if (config.MqttUsername.isEmpty())
+        config.MqttUsername = data["username"] | "";
+
     config.MqttPassword =
         data["mqttPassword"] | "";
 
+    if (config.MqttPassword.isEmpty())
+        config.MqttPassword = data["MqttPassword"] | "";
+
+    if (config.MqttPassword.isEmpty())
+        config.MqttPassword = data["password"] | "";
+
+    if (config.MqttHost.isEmpty())
+    {
+        message = "Backend returned an empty MQTT host.";
+        return false;
+    }
+
+    _configuration.Save();
+
     message =
-        response["message"] | "Provisioning successful.";
+        response["message"] |
+        "MQTT configuration refreshed.";
 
     return true;
 }
+
 void Provisioning::SendResponse(
     bool status,
     const String& message)

@@ -21,6 +21,10 @@ public:
 
     bool IsRunning() const;
 
+    // Refresh MQTT broker credentials/configuration from the backend using
+    // the provisioned HardwareId and AuthKey.
+    bool RefreshMqttConfiguration();
+
 private:
 
     ConfigurationManager& _configuration;

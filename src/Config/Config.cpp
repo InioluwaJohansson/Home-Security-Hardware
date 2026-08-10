@@ -43,3 +43,11 @@ bool ConfigurationManager::IsProvisioned() const
 {
     return configuration.IsProvisioned;
 }
+
+bool ConfigurationManager::ResetPreferences()
+{
+    jwt.Clear();
+    storage.Clear();
+    configuration = Config{};
+    return true;
+}
